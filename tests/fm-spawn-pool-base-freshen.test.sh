@@ -687,7 +687,7 @@ lay_out_as_pool_slot() {
   mkdir -p "$HOME_DIR/user-home"
   home_root=$(HOME="$HOME_DIR/user-home" FM_HOME="$HOME_DIR" bash -c '. "$1"; fm_treehouse_home_root "$2"' _ \
     "$ROOT/bin/fm-wake-lib.sh" "$HOME_DIR") || fail "could not resolve the case home's Treehouse root"
-  slot_root="$home_root/project-pool"
+  slot_root="$home_root/.treehouse/project-pool"
   mkdir -p "$slot_root/1"
   git -C "$PROJECT_DIR" worktree move "$POOL_DIR" "$slot_root/1/project"
   printf '{"worktrees":[{"name":"1","path":"%s"}]}\n' "$slot_root/1/project" \

@@ -71,7 +71,8 @@ if [ "${1:-}" = get ] && [ "${2:-}" = --help ]; then
   else
     printf '%s\n' 'Usage: treehouse get'
   fi
-  exit 0
+  [ "${FM_FAKE_TREEHOUSE_ROOT_HELP:-1}" = 0 ] || printf '%s\n' '  --root string'
+  exit "${FM_FAKE_TREEHOUSE_HELP_EXIT:-0}"
 fi
 exit 0
 SH
@@ -687,6 +688,33 @@ ROWS
   pass "bootstrap: JSON-emitting backends require jq (their genuine dep), never tmux"
 }
 
+test_treehouse_root_check_follows_resolved_backend() {
+  local backend scenario case_dir fakebin out root_help help_exit
+  for backend in tmux herdr zellij cmux orca; do
+    for scenario in supported missing-root failed-help; do
+      case_dir="$TMP_ROOT/treehouse-root-$backend-$scenario"
+      mkdir -p "$case_dir/home/config"
+      printf '%s\n' "$backend" > "$case_dir/home/config/backend"
+      fakebin=$(make_fake_toolchain "$case_dir")
+      fm_fake_exit0 "$fakebin" "$backend" jq
+      root_help=1
+      help_exit=0
+      [ "$scenario" != missing-root ] || root_help=0
+      [ "$scenario" != failed-help ] || help_exit=1
+      out=$(PATH="$fakebin:$BASE_PATH" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
+        FM_FAKE_TREEHOUSE_LEASE_HELP=1 FM_FAKE_TREEHOUSE_ROOT_HELP="$root_help" \
+        FM_FAKE_TREEHOUSE_HELP_EXIT="$help_exit" "$ROOT/bin/fm-bootstrap.sh")
+      if [ "$backend" = orca ] || [ "$scenario" = supported ]; then
+        [ -z "$out" ] || fail "$backend/$scenario: unexpected diagnostic: $out"
+      else
+        [ "$out" = 'MISSING: treehouse (install: curl -fsSL https://kunchenguid.github.io/treehouse/install.sh | sh)' ] \
+          || fail "$backend/$scenario: missing actionable Treehouse upgrade: $out"
+      fi
+    done
+  done
+  pass "bootstrap requires Treehouse root support only for Treehouse-backed runtimes"
+}
+
 test_treehouse_lease_check_follows_resolved_backend() {
   local case_dir fakebin out
   # A treehouse that lacks durable --lease support is only a problem for a backend
@@ -1178,6 +1206,7 @@ test_cmux_bundled_cli_satisfies_dependency
 test_unknown_backend_reports_invalid_configuration
 test_json_backends_require_jq_not_tmux
 test_treehouse_lease_check_follows_resolved_backend
+test_treehouse_root_check_follows_resolved_backend
 test_fleet_sync_timeout_scales_with_origin_backed_project_count
 test_fleet_sync_timeout_floor_preserves_small_fleets
 test_fleet_sync_timeout_explicit_override_wins

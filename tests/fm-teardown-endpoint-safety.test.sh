@@ -38,19 +38,19 @@ SH
 mark_case_as_treehouse_pool() {  # <case>
   local dir=$1
   rm -rf "$dir/worktree"
-  mkdir -p "$dir/pool/1"
+  mkdir -p "$dir/.treehouse/pool/1"
   git -C "$dir/project" -c user.name=test -c user.email=test@example.invalid \
     commit --allow-empty -qm pool-fixture
-  git -C "$dir/project" worktree add -q --detach "$dir/pool/1/project"
-  ln -s "pool/1/project" "$dir/worktree"
+  git -C "$dir/project" worktree add -q --detach "$dir/.treehouse/pool/1/project"
+  ln -s ".treehouse/pool/1/project" "$dir/worktree"
   printf '{"worktrees":[{"name":"1","path":"%s"}]}\n' \
-    "$dir/pool/1/project" > "$dir/pool/treehouse-state.json"
+    "$dir/.treehouse/pool/1/project" > "$dir/.treehouse/pool/treehouse-state.json"
   : > "$dir/worktree/sentinel"
 }
 
 claim_pool_slot() {  # <case> <task-id> [home]
   local dir=$1 id=$2 home=${3:-$1/home}
-  printf 'task=%s\nhome=%s\n' "$id" "$home" > "$dir/pool/1/.fm-slot-owner"
+  printf 'task=%s\nhome=%s\n' "$id" "$home" > "$dir/.treehouse/pool/1/.fm-slot-owner"
 }
 
 run_case() {  # <case> <id>
@@ -868,10 +868,10 @@ test_remote_layout_homes_serialize_on_one_project_lock() {
 assert_reassigned_slot_left_alone() {  # <case> <id> <other> <description>
   local dir=$1 id=$2 other=$3 description=$4
   assert_absent "$dir/home/state/$id.meta" "$description: the stale task's own record was not removed"
-  assert_present "$dir/pool/1/.fm-slot-owner" "$description: another task's slot claim was removed"
-  assert_contains "$(cat "$dir/pool/1/.fm-slot-owner")" "task=$other" \
+  assert_present "$dir/.treehouse/pool/1/.fm-slot-owner" "$description: another task's slot claim was removed"
+  assert_contains "$(cat "$dir/.treehouse/pool/1/.fm-slot-owner")" "task=$other" \
     "$description: another task's slot claim was rewritten"
-  assert_present "$dir/pool/1/project/.git" "$description: the reassigned slot's checkout was removed"
+  assert_present "$dir/.treehouse/pool/1/project/.git" "$description: the reassigned slot's checkout was removed"
   ! grep -Fq "treehouse <return>" "$dir/runtime.log" \
     || fail "$description: the reassigned slot was returned to the pool: $(cat "$dir/runtime.log")"
   assert_contains "$(cat "$dir/stderr")" "$other" \
@@ -948,7 +948,7 @@ test_reassigned_pool_slot_finishes_own_cleanup_without_touching_the_slot() {
   fm_write_meta "$dir/home/state/$id.meta" \
     "window=firstmate:fm-$id" "endpoint_task_id=$id" \
     "worktree=$dir/worktree" "project=$dir/project" "kind=scout"
-  printf 'not-a-claim\n' > "$dir/pool/1/.fm-slot-owner"
+  printf 'not-a-claim\n' > "$dir/.treehouse/pool/1/.fm-slot-owner"
 
   set +e
   run_case "$dir" "$id" > "$dir/stdout" 2> "$dir/stderr"
@@ -956,11 +956,11 @@ test_reassigned_pool_slot_finishes_own_cleanup_without_touching_the_slot() {
   set -e
   [ "$rc" -ne 0 ] || fail "teardown returned a pool slot whose claim could not be read"
   assert_present "$dir/worktree/sentinel" "teardown reset a pool slot whose claim could not be read"
-  assert_present "$dir/pool/1/.fm-slot-owner" "teardown removed an unreadable slot claim"
+  assert_present "$dir/.treehouse/pool/1/.fm-slot-owner" "teardown removed an unreadable slot claim"
   assert_present "$dir/home/state/$id.meta" "teardown removed the task record on an unreadable claim"
   [ ! -s "$dir/runtime.log" ] \
     || fail "teardown reached the runtime on an unreadable slot claim: $(cat "$dir/runtime.log")"
-  assert_contains "$(cat "$dir/stderr")" "$dir/pool/1/.fm-slot-owner" \
+  assert_contains "$(cat "$dir/stderr")" "$dir/.treehouse/pool/1/.fm-slot-owner" \
     "unreadable-claim refusal should name the claim file to inspect"
 
   pass "fm-teardown: a pool slot claimed by another task is left alone while the task's own cleanup finishes"
@@ -981,7 +981,7 @@ test_own_and_absent_slot_claims_still_tear_down() {
   run_case "$dir" "$id" > "$dir/stdout" 2> "$dir/stderr" \
     || fail "teardown of a task holding its own slot claim failed: $(cat "$dir/stderr")"
   assert_absent "$dir/home/state/$id.meta" "own-claim teardown left the task record"
-  assert_absent "$dir/pool/1/.fm-slot-owner" "own-claim teardown left its spent slot claim behind"
+  assert_absent "$dir/.treehouse/pool/1/.fm-slot-owner" "own-claim teardown left its spent slot claim behind"
   grep -Fq "treehouse <return>" "$dir/runtime.log" \
     || fail "own-claim teardown did not return its own pool slot: $(cat "$dir/runtime.log")"
 

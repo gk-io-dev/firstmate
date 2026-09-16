@@ -78,10 +78,10 @@ EOF
 }
 
 # make_pool_slot <project> <root> <pool-name> <slot>: a Treehouse-shaped slot
-# <root>/<pool-name>/<slot>/project, a linked worktree of <project>, with the
+# <root>/.treehouse/<pool-name>/<slot>/project, a linked worktree of <project>, with the
 # pool's state file, exactly as fm_treehouse_pool_slot recognizes it.
 make_pool_slot() {
-  local project=$1 root=$2 pool=$3 slot=$4 wt
+  local project=$1 root=$2/.treehouse pool=$3 slot=$4 wt
   wt="$root/$pool/$slot/project"
   mkdir -p "$root/$pool/$slot"
   git -C "$project" worktree add -q --detach "$wt"
@@ -166,8 +166,8 @@ test_two_homes_with_clones_of_one_repo_allocate_to_different_roots() {
   assert_grep "treehouse_root=$root_a" "$home_a/state/task-a.meta" "home-a's record did not carry its Treehouse root"
   assert_grep "treehouse_root=$root_b" "$home_b/state/task-b.meta" "home-b's record did not carry its Treehouse root"
   assert_grep "worktree=$wt_a" "$home_a/state/task-a.meta" "home-a's record did not carry its slot"
-  assert_grep "task=task-a" "$root_a/shared-repo-e814d1/1/.fm-slot-owner" "home-a's slot was not claimed for task-a"
-  assert_grep "task=task-b" "$root_b/shared-repo-e814d1/1/.fm-slot-owner" "home-b's slot was not claimed for task-b"
+  assert_grep "task=task-a" "$root_a/.treehouse/shared-repo-e814d1/1/.fm-slot-owner" "home-a's slot was not claimed for task-a"
+  assert_grep "task=task-b" "$root_b/.treehouse/shared-repo-e814d1/1/.fm-slot-owner" "home-b's slot was not claimed for task-b"
   pass "fm-spawn: two homes with clones of one repo allocate under two distinct home-scoped Treehouse roots and record them"
 }
 
@@ -181,7 +181,7 @@ test_teardown_returns_through_recorded_root() {
   fm_git_init_commit "$home/projects/repo"
   root=$(home_root "$home") || fail "root did not resolve"
   wt=$(make_pool_slot "$home/projects/repo" "$root" repo-abc123 1)
-  printf 'task=task-r\nhome=%s\n' "$home" > "$root/repo-abc123/1/.fm-slot-owner"
+  printf 'task=task-r\nhome=%s\n' "$home" > "$root/.treehouse/repo-abc123/1/.fm-slot-owner"
   fm_write_meta "$home/state/task-r.meta" \
     "window=firstmate:fm-task-r" "endpoint_task_id=task-r" \
     "worktree=$wt" "project=$home/projects/repo" "treehouse_root=$root" "kind=scout"
@@ -190,7 +190,7 @@ test_teardown_returns_through_recorded_root() {
   grep -Fq "treehouse <return> <--root> <$root> <--force> <$wt>" "$dir/treehouse.log" \
     || fail "teardown did not return the slot through its recorded root: $(cat "$dir/treehouse.log")"
   assert_absent "$home/state/task-r.meta" "teardown left the task record"
-  assert_absent "$root/repo-abc123/1/.fm-slot-owner" "teardown left the spent slot claim"
+  assert_absent "$root/.treehouse/repo-abc123/1/.fm-slot-owner" "teardown left the spent slot claim"
   pass "fm-teardown: a task returns its slot through the Treehouse root its record carries"
 }
 
@@ -234,7 +234,7 @@ test_mismatched_root_refuses_teardown_without_mutation() {
   other_root=$(home_root "$home") || fail "root did not resolve"
   mkdir -p "$other_root"
   : > "$wt/sentinel"
-  printf 'task=task-m\nhome=%s\n' "$home" > "$TREEHOUSE_ROOT/repo-mm/1/.fm-slot-owner"
+  printf 'task=task-m\nhome=%s\n' "$home" > "$TREEHOUSE_ROOT/.treehouse/repo-mm/1/.fm-slot-owner"
   fm_write_meta "$home/state/task-m.meta" \
     "window=firstmate:fm-task-m" "endpoint_task_id=task-m" \
     "worktree=$wt" "project=$home/projects/repo" "treehouse_root=$other_root" "kind=scout"
@@ -247,7 +247,7 @@ test_mismatched_root_refuses_teardown_without_mutation() {
   assert_contains "$(cat "$dir/stderr")" "$other_root" "refusal did not name the recorded root"
   assert_present "$home/state/task-m.meta" "mismatched root changed the task record before refusing"
   assert_present "$wt/sentinel" "mismatched root touched the slot before refusing"
-  assert_present "$TREEHOUSE_ROOT/repo-mm/1/.fm-slot-owner" "mismatched root removed the slot claim"
+  assert_present "$TREEHOUSE_ROOT/.treehouse/repo-mm/1/.fm-slot-owner" "mismatched root removed the slot claim"
   [ ! -s "$dir/treehouse.log" ] || fail "mismatched root still called treehouse: $(cat "$dir/treehouse.log")"
   pass "fm-teardown: a recorded root that does not contain the slot refuses and changes nothing, even with --force"
 }
@@ -267,7 +267,7 @@ test_spawn_refuses_slot_outside_home_root() {
   [ "$rc" -ne 0 ] || fail "spawn accepted a slot outside its home's Treehouse root: $out"
   assert_contains "$out" "outside this home's Treehouse root" "spawn did not name the root mismatch: $out"
   assert_absent "$home/state/task-f.meta" "spawn published a record for a refused slot"
-  assert_absent "$TREEHOUSE_ROOT/repo-shared/1/.fm-slot-owner" "spawn claimed a slot it refused"
+  assert_absent "$TREEHOUSE_ROOT/.treehouse/repo-shared/1/.fm-slot-owner" "spawn claimed a slot it refused"
   pass "fm-spawn: a slot Treehouse enters outside this home's root refuses rather than claiming it"
 }
 
@@ -285,7 +285,7 @@ test_spawn_refuses_slot_another_live_task_holds() {
   fm_git_init_commit "$home/projects/repo"
   root=$(home_root "$home") || fail "root did not resolve"
   wt=$(make_pool_slot "$home/projects/repo" "$root" repo-live 1)
-  printf 'task=holder\nhome=%s\n' "$other_home" > "$root/repo-live/1/.fm-slot-owner"
+  printf 'task=holder\nhome=%s\n' "$other_home" > "$root/.treehouse/repo-live/1/.fm-slot-owner"
   fm_write_meta "$other_home/state/holder.meta" "window=firstmate:fm-holder" "worktree=$wt" "kind=ship"
   set +e
   out=$(run_spawn "$home" "$home/projects/repo" task-n "$wt" "$fakebin" "$dir/tmux.log")
@@ -293,7 +293,7 @@ test_spawn_refuses_slot_another_live_task_holds() {
   set -e
   [ "$rc" -ne 0 ] || fail "spawn launched into a slot another live task holds: $out"
   assert_contains "$out" "task holder of home $other_home still holds" "spawn did not name the live holder: $out"
-  assert_grep "task=holder" "$root/repo-live/1/.fm-slot-owner" "spawn replaced the live holder's claim"
+  assert_grep "task=holder" "$root/.treehouse/repo-live/1/.fm-slot-owner" "spawn replaced the live holder's claim"
   assert_absent "$home/state/task-n.meta" "spawn published a record for a refused slot"
 
   # The same claim with the holder's record gone is stale: the launch proceeds
@@ -301,9 +301,71 @@ test_spawn_refuses_slot_another_live_task_holds() {
   rm -f "$other_home/state/holder.meta"
   out=$(run_spawn "$home" "$home/projects/repo" task-n "$wt" "$fakebin" "$dir/tmux2.log") \
     || fail "spawn refused a slot whose previous holder left no record: $out"
-  assert_grep "task=task-n" "$root/repo-live/1/.fm-slot-owner" "spawn did not take over a stale claim"
+  assert_grep "task=task-n" "$root/.treehouse/repo-live/1/.fm-slot-owner" "spawn did not take over a stale claim"
   pass "fm-spawn: a slot claimed by a task that still has a record refuses on every runtime; a stale claim is replaced"
 }
+
+test_real_treehouse_root_round_trip() (
+  fm_live_gate default-on FM_LIVE_TREEHOUSE_POOLS treehouse jq
+  local dir="$TMP_ROOT/real-treehouse" mode cli_root recorded wt resolved expected
+  local treehouse_env_root=
+  mkdir -p "$dir/user" "$dir/home"
+  fm_git_init_commit "$dir/repo"
+  real_treehouse() (
+    cd "$dir/repo" || exit 1
+    env HOME="$dir/user" TREEHOUSE_ROOT="$treehouse_env_root" TREEHOUSE_NO_UPDATE_CHECK=1 treehouse "$@"
+  )
+  for mode in explicit symlink legacy-default legacy-config legacy-env; do
+    rm -f "$dir/repo/treehouse.toml"
+    treehouse_env_root=
+    cli_root=
+    recorded=
+    case "$mode" in
+      explicit|symlink)
+        cli_root=$(home_root "$dir/home") || fail "real home root did not resolve"
+        mkdir -p "$cli_root"
+        if [ "$mode" = symlink ]; then
+          ln -s "$cli_root" "$dir/root-link"
+          cli_root="$dir/root-link"
+        fi
+        recorded="$cli_root"
+        expected="$cli_root"
+        wt=$(real_treehouse get --root "$cli_root" --lease --lease-holder "$mode" --no-fetch) \
+          || fail "real Treehouse allocation failed for $mode"
+        ;;
+      *)
+        case "$mode" in
+          legacy-default) expected="$dir/user" ;;
+          legacy-config)
+            printf 'root = "configured"\n' > "$dir/repo/treehouse.toml"
+            expected="$dir/repo/configured"
+            ;;
+          legacy-env)
+            treehouse_env_root="$dir/env-root"
+            expected="$treehouse_env_root"
+            ;;
+        esac
+        wt=$(real_treehouse get --lease --lease-holder "$mode" --no-fetch) \
+          || fail "real legacy Treehouse allocation failed for $mode"
+        ;;
+    esac
+    resolved=$(FM_HOME="$dir/home" bash -c '
+      . "$1"
+      fm_treehouse_task_root "$2" "$3" || exit 1
+      printf "%s\n" "$FM_TREEHOUSE_TASK_ROOT"
+    ' _ "$WAKE_LIB" "$recorded" "$wt") || fail "real Treehouse slot reconciliation failed for $mode: $wt"
+    [ "$resolved" = "$expected" ] || fail "$mode resolved $resolved instead of CLI root $expected"
+    real_treehouse status --root "$resolved" --json | \
+      jq -e --arg wt "$wt" --arg holder "$mode" 'any(.[]; .path == $wt and .lease_holder == $holder and .status == "leased")' >/dev/null \
+      || fail "recovery status missed the real $mode slot"
+    real_treehouse return --root "$resolved" --force "$wt" \
+      || fail "return through reconciled CLI root failed for $mode"
+    real_treehouse status --root "$resolved" --json | \
+      jq -e --arg wt "$wt" 'any(.[]; .path == $wt and .lease_holder == "" and .status == "available")' >/dev/null \
+      || fail "return did not release the real $mode slot"
+  done
+  pass "real Treehouse allocation, recovery, and return preserve explicit and legacy roots"
+)
 
 test_home_root_is_deterministic_distinct_and_canonical
 test_two_homes_with_clones_of_one_repo_allocate_to_different_roots
@@ -312,3 +374,4 @@ test_legacy_record_returns_through_its_original_root
 test_mismatched_root_refuses_teardown_without_mutation
 test_spawn_refuses_slot_outside_home_root
 test_spawn_refuses_slot_another_live_task_holds
+test_real_treehouse_root_round_trip
