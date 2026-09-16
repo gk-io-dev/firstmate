@@ -1259,9 +1259,9 @@ fm_treehouse_pool_slot() {  # <project-dir> <worktree>
 #
 #   <base>/fm-home-<hash>
 #
-# <base> is $TREEHOUSE_ROOT when set, else $HOME/.treehouse - the same default
-# Treehouse itself uses, so per-home roots sit beside the legacy pools rather
-# than in a second tree. <hash> is the first 12 hex digits of the Git blob hash
+# <base> is nonempty $TREEHOUSE_ROOT, else $HOME/.treehouse. Relative bases resolve
+# from the canonical spawning project directory, which must then be supplied.
+# <hash> is the first 12 hex digits of the Git blob hash
 # of the home's canonical path (symlinks resolved), so the root is deterministic
 # per home, distinct across homes even when their repositories share a remote or
 # a name, and free of every character the home path might carry. The root is
@@ -1270,11 +1270,8 @@ fm_treehouse_pool_slot() {  # <project-dir> <worktree>
 # treehouse_root= so return, ownership checks, and crash recovery use the root
 # the slot was taken from rather than whatever the environment says later.
 #
-# Only ship and scout slots move to this root. A secondmate home is a durable
-# lease the PRIMARY takes from the firstmate repository's own pool
-# (bin/fm-home-seed.sh), returned by the primary under Treehouse's default root;
-# that primary-owned lease is deliberately not a child project pool and keeps
-# its existing root, so every registered home keeps resolving.
+# Only ship and scout slots move to this root; bin/fm-home-seed.sh owns the
+# separate root-resolution contract for persistent secondmate home leases.
 #
 # A task whose meta predates treehouse_root= has its slot wherever Treehouse put
 # it at the time (the legacy shared pool). fm_treehouse_task_root resolves that
@@ -1299,7 +1296,8 @@ fm_treehouse_home_root() {  # [<fm-home>] [<project-dir>]
   printf '%s/fm-home-%s\n' "${base%/}" "${hash:0:12}"
 }
 
-# The Treehouse root a pool slot lives under: <root>/<pool>/<slot>/<repo>.
+# The resolved pool directory, not the CLI root: for
+# <cli-root>/.treehouse/<pool>/<slot>/<repo>, returns <cli-root>/.treehouse.
 fm_treehouse_slot_root() {  # <worktree>
   local worktree=$1 slot
   slot=$(CDPATH='' cd -- "$worktree" 2>/dev/null && pwd -P) || return 1
@@ -1309,9 +1307,10 @@ fm_treehouse_slot_root() {  # <worktree>
 # The root every Treehouse call on a task's slot must use, reconciled between
 # the task's recorded treehouse_root= and the slot's actual location.
 #
-# Sets FM_TREEHOUSE_TASK_ROOT and returns 0 when the recorded root is empty (a
-# record that predates the field: the slot's own root is authoritative) or
-# resolves via <root>/.treehouse to the directory containing the slot. Returns 1 with
+# Sets FM_TREEHOUSE_TASK_ROOT to the CLI root and returns 0 when its .treehouse
+# directory matches the slot's resolved pool directory. An empty recorded root
+# (a legacy task) is inferred as the parent of that pool directory and checked
+# the same way. Returns 1 with
 # FM_TREEHOUSE_TASK_ROOT empty when the record names a root that does not
 # contain the slot - including a recorded root that no longer exists - because
 # a call issued against a root the slot is not under would be returning or

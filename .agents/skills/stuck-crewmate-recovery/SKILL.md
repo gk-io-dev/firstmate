@@ -33,7 +33,7 @@ A no-mistakes run matched to the crew's branch and current code remains authorit
 
 When no authoritative run accounts for the task, inspect only its recorded backend and worktree inventory.
 Use `treehouse status --root <root>` for treehouse-backed tmux, herdr, zellij, or cmux tasks, where `<root>` is `FM_TREEHOUSE_TASK_ROOT` from `bin/fm-wake-lib.sh`'s `fm_treehouse_task_root` using the recorded `treehouse_root=` (empty for legacy records) and `worktree=`.
-Stop if reconciliation fails; a bare `treehouse status` reads only Treehouse's default root and misses every home-scoped pool.
+Stop if reconciliation fails; a bare `treehouse status` does not reliably select the task's recorded pool.
 Use the recorded `orca_worktree_id=` and `terminal=` for Orca tasks.
 Do not sweep another home's endpoints or infer ownership from a matching window label.
 

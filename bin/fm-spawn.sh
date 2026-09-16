@@ -349,11 +349,15 @@
 # success line and state/<id>.meta omit them.
 # A ship or scout spawn on a Treehouse-backed backend (every backend except orca)
 # acquires its slot with `treehouse get --root <root>`, where <root> is this
-# home's own Treehouse root (bin/fm-wake-lib.sh's fm_treehouse_home_root: a
-# deterministic <base>/fm-home-<hash> per canonical FM_HOME), and records that
-# root as treehouse_root= in state/<id>.meta. A slot that lands outside that root
+# home's own CLI root (bin/fm-wake-lib.sh's fm_treehouse_home_root), and records
+# that absolute root as treehouse_root= in state/<id>.meta. A slot outside its pool
 # refuses the launch. A relaunch keeps the recorded treehouse_root= line; a record without
 # one predates the field and resolves its root from the slot path itself.
+# Fresh allocation and relaunch refuse a slot whose owner claim names another
+# canonical home with an extant task record, independently of runtime liveness.
+# A prior record in the same canonical home does not reserve a reusable slot;
+# this check leaves Treehouse's allocation eligibility and teardown's ownership
+# proof intact. Missing-home or unreadable claims refuse rather than guess.
 # Every fresh spawn or relaunch records a new spawn_gen= incarnation token so durable
 # consumers can distinguish a replacement worker that reuses the same task id.
 # When the home session's frozen trace-context decision is enabled (see
