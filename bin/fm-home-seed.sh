@@ -7,7 +7,11 @@
 #       a fresh firstmate worktree via "treehouse get --lease", which durably
 #       leases the worktree under the secondmate <id> so the home survives with
 #       no live process and is never recycled until the lease is released with
-#       "treehouse return". Projects are cloned
+#       "treehouse return". That lease is the PRIMARY's own, taken from the
+#       firstmate repository's pool under Treehouse's default root, and is
+#       deliberately not one of the per-home child project pools that
+#       bin/fm-wake-lib.sh's fm_treehouse_home_root gives ship and scout
+#       slots, so registered homes keep resolving. Projects are cloned
 #       from the active home into the secondmate home's projects/ directory.
 #       That project list is non-exclusive provisioning data. Pass --no-projects
 #       instead of a project list to seed a project-less home for a domain whose

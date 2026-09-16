@@ -1249,6 +1249,97 @@ fm_treehouse_pool_slot() {  # <project-dir> <worktree>
   [ "$project_common" = "$slot_common" ]
 }
 
+# Home-scoped Treehouse root: where THIS home's ship and scout slots live.
+#
+# Treehouse names a pool after the repository it serves, so two clones of one
+# remote - a project under the primary home and the same project under a
+# persistent secondmate home - resolve to ONE pool under Treehouse's default
+# root, and a launch from either home can be handed a slot the other home's task
+# is still working in. Firstmate therefore gives every home its own root:
+#
+#   <base>/fm-home-<hash>
+#
+# <base> is $TREEHOUSE_ROOT when set, else $HOME/.treehouse - the same default
+# Treehouse itself uses, so per-home roots sit beside the legacy pools rather
+# than in a second tree. <hash> is the first 12 hex digits of the Git blob hash
+# of the home's canonical path (symlinks resolved), so the root is deterministic
+# per home, distinct across homes even when their repositories share a remote or
+# a name, and free of every character the home path might carry. The root is
+# passed to Treehouse explicitly as `--root`, which overrides TREEHOUSE_ROOT and
+# any repository treehouse.toml, and is recorded in the task's meta as
+# treehouse_root= so return, ownership checks, and crash recovery use the root
+# the slot was taken from rather than whatever the environment says later.
+#
+# Only ship and scout slots move to this root. A secondmate home is a durable
+# lease the PRIMARY takes from the firstmate repository's own pool
+# (bin/fm-home-seed.sh), returned by the primary under Treehouse's default root;
+# that primary-owned lease is deliberately not a child project pool and keeps
+# its existing root, so every registered home keeps resolving.
+#
+# A task whose meta predates treehouse_root= has its slot wherever Treehouse put
+# it at the time (the legacy shared pool). fm_treehouse_task_root resolves that
+# root from the slot path itself, so legacy slots drain through their original
+# pool with no migration, move, or reinterpretation.
+fm_treehouse_home_root() {  # [<fm-home>]
+  local home=${1:-$FM_HOME} base hash
+  home=$(CDPATH='' cd -- "$home" 2>/dev/null && pwd -P) || return 1
+  base=${TREEHOUSE_ROOT:-${HOME:-}/.treehouse}
+  [ -n "${HOME:-}" ] || [ -n "${TREEHOUSE_ROOT:-}" ] || return 1
+  case "$base" in /*) ;; *) return 1 ;; esac
+  case "$base" in *[$'\n\r']*) return 1 ;; esac
+  hash=$(printf '%s' "$home" | git hash-object --stdin 2>/dev/null) || return 1
+  [ -n "$hash" ] || return 1
+  printf '%s/fm-home-%s\n' "${base%/}" "${hash:0:12}"
+}
+
+# The Treehouse root a pool slot lives under: <root>/<pool>/<slot>/<repo>.
+fm_treehouse_slot_root() {  # <worktree>
+  local worktree=$1 slot
+  slot=$(CDPATH='' cd -- "$worktree" 2>/dev/null && pwd -P) || return 1
+  printf '%s\n' "$(dirname "$(dirname "$(dirname "$slot")")")"
+}
+
+# The root every Treehouse call on a task's slot must use, reconciled between
+# the task's recorded treehouse_root= and the slot's actual location.
+#
+# Sets FM_TREEHOUSE_TASK_ROOT and returns 0 when the recorded root is empty (a
+# record that predates the field: the slot's own root is authoritative) or
+# resolves to the very root that contains the slot. Returns 1 with
+# FM_TREEHOUSE_TASK_ROOT empty when the record names a root that does not
+# contain the slot - including a recorded root that no longer exists - because
+# a call issued against a root the slot is not under would be returning or
+# claiming another home's slot. FM_TREEHOUSE_ROOT_REASON names the
+# contradiction for the caller's refusal. Both are output globals, so call this
+# directly rather than in a command substitution.
+# shellcheck disable=SC2034 # Output globals, read by the sourcing caller.
+FM_TREEHOUSE_TASK_ROOT=
+# shellcheck disable=SC2034 # Output globals, read by the sourcing caller.
+FM_TREEHOUSE_ROOT_REASON=
+fm_treehouse_task_root() {  # <recorded-root> <worktree>
+  local recorded=$1 worktree=$2 actual expected
+  FM_TREEHOUSE_ROOT_REASON=
+  FM_TREEHOUSE_TASK_ROOT=
+  actual=$(fm_treehouse_slot_root "$worktree") || {
+    # shellcheck disable=SC2034 # Output global, read by the sourcing caller.
+    FM_TREEHOUSE_ROOT_REASON="worktree $worktree is not a readable directory"
+    return 1
+  }
+  if [ -n "$recorded" ]; then
+    expected=$(CDPATH='' cd -- "$recorded" 2>/dev/null && pwd -P) || {
+      # shellcheck disable=SC2034 # Output global, read by the sourcing caller.
+      FM_TREEHOUSE_ROOT_REASON="recorded Treehouse root $recorded does not exist, yet the worktree sits under $actual"
+      return 1
+    }
+    if [ "$expected" != "$actual" ]; then
+      # shellcheck disable=SC2034 # Output global, read by the sourcing caller.
+      FM_TREEHOUSE_ROOT_REASON="recorded Treehouse root $expected does not contain the worktree, which sits under $actual"
+      return 1
+    fi
+  fi
+  # shellcheck disable=SC2034 # Output global, read by the sourcing caller.
+  FM_TREEHOUSE_TASK_ROOT=$actual
+}
+
 # Slot-owner claim: which task a Treehouse pool slot currently belongs to.
 #
 # Treehouse can record ownership durably: `treehouse get --lease --lease-holder`

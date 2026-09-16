@@ -676,11 +676,18 @@ test_stale_pin_beside_other_dirt_reports_one_verdict() {
   pass "a stale pin beside other dirt yields the conservative refusal alone, with no stale-pin line"
 }
 
-# Re-lay a case's pooled worktree as a managed Treehouse slot: <pool>/<slot>/<repo>
+# Re-lay a case's pooled worktree as a managed Treehouse slot: <root>/<pool>/<slot>/<repo>
 # with the pool's state file beside the slot, which is the shape fm-spawn claims
-# for its task. Rewrites POOL_DIR to the relocated checkout.
+# for its task. The pool sits under the home-scoped Treehouse root fm-spawn asks
+# Treehouse for (bin/fm-wake-lib.sh fm_treehouse_home_root, resolved against the
+# same throwaway HOME fm_test_run_spawn launches with), because a slot anywhere
+# else is refused as another home's. Rewrites POOL_DIR to the relocated checkout.
 lay_out_as_pool_slot() {
-  local slot_root="$CASE_DIR/slots"
+  local home_root slot_root
+  mkdir -p "$HOME_DIR/user-home"
+  home_root=$(HOME="$HOME_DIR/user-home" FM_HOME="$HOME_DIR" bash -c '. "$1"; fm_treehouse_home_root "$2"' _ \
+    "$ROOT/bin/fm-wake-lib.sh" "$HOME_DIR") || fail "could not resolve the case home's Treehouse root"
+  slot_root="$home_root/project-pool"
   mkdir -p "$slot_root/1"
   git -C "$PROJECT_DIR" worktree move "$POOL_DIR" "$slot_root/1/project"
   printf '{"worktrees":[{"name":"1","path":"%s"}]}\n' "$slot_root/1/project" \
