@@ -24,7 +24,7 @@ export TREEHOUSE_ROOT="$TMP_ROOT/treehouse-base"
 mkdir -p "$TREEHOUSE_ROOT"
 
 home_root() {  # <fm-home>
-  FM_HOME="$1" bash -c '. "$1"; fm_treehouse_home_root "$2"' _ "$WAKE_LIB" "$1"
+  FM_HOME="$1" bash -c '. "$1"; fm_treehouse_home_root "$2" "$3"' _ "$WAKE_LIB" "$1" "${2:-}"
 }
 
 # --- fake runtime -----------------------------------------------------------
@@ -38,9 +38,11 @@ make_fakebin() {  # <dir>
 #!/usr/bin/env bash
 set -u
 case "$*" in
+  *"#{pane_current_command}"*) printf 'bash\n'; exit 0 ;;
   *"#{pane_current_path}"*) printf '%s\n' "${FM_FAKE_PANE_PATH:-}"; exit 0 ;;
 esac
 case "${1:-}" in
+  list-windows) [ -z "${FM_FAKE_RELAUNCH_ID:-}" ] || printf 'fm-%s\n' "$FM_FAKE_RELAUNCH_ID"; exit 0 ;;
   display-message) printf 'firstmate\n'; exit 0 ;;
   send-keys) printf '%s\n' "$*" >> "${FM_FAKE_TMUX_LOG:-/dev/null}"; exit 0 ;;
 esac
@@ -89,13 +91,15 @@ make_pool_slot() {
 
 run_spawn() {  # <home> <project> <id> <pane-path> <fakebin> <tmux-log>
   local home=$1 project=$2 id=$3 pane=$4 fakebin=$5 log=$6
+  local -a args=("$id" "$project" --mode no-mistakes --yolo off)
+  [ "${7:-}" != relaunch ] || args=("$id" --relaunch)
   FM_ROOT_OVERRIDE='' FM_HOME="$home" \
     FM_STATE_OVERRIDE="$home/state" FM_DATA_OVERRIDE="$home/data" \
     FM_PROJECTS_OVERRIDE="$home/projects" FM_CONFIG_OVERRIDE="$home/config" \
     FM_SPAWN_NO_GUARD=1 TMUX="fake,1,0" \
     FM_FAKE_PANE_PATH="$pane" FM_FAKE_TMUX_LOG="$log" \
     PATH="$fakebin:$PATH" \
-    "$SPAWN" "$id" "$project" --mode no-mistakes --yolo off 2>&1
+    "$SPAWN" "${args[@]}" 2>&1
 }
 
 run_teardown() {  # <home> <id> <fakebin> <treehouse-log>
@@ -270,27 +274,118 @@ test_spawn_refuses_slot_outside_home_root() {
 }
 
 test_spawn_reuses_slot_with_previous_task_record() {
-  local dir=$TMP_ROOT/reuse-claim home=$TMP_ROOT/reuse-claim/home
-  local fakebin root wt out
-  mkdir -p "$dir"
-  fakebin=$(make_fakebin "$dir")
-  make_home "$home" task-n
-  fm_git_init_commit "$home/projects/repo"
-  root=$(home_root "$home") || fail "root did not resolve"
-  wt=$(make_pool_slot "$home/projects/repo" "$root" repo-reuse 1)
-  printf 'task=holder\nhome=%s\n' "$home" > "$root/.treehouse/repo-reuse/1/.fm-slot-owner"
-  fm_write_meta "$home/state/holder.meta" \
-    "window=firstmate:fm-holder" "worktree=$wt" "project=$home/projects/repo" "kind=ship"
-  cp "$home/state/holder.meta" "$dir/holder-before.meta"
+  local mode dir home fakebin root wt out owner_home
+  for mode in canonical alias; do
+    dir="$TMP_ROOT/reuse-claim-$mode"
+    home="$dir/home"
+    mkdir -p "$dir"
+    fakebin=$(make_fakebin "$dir")
+    make_home "$home" task-n
+    fm_git_init_commit "$home/projects/repo"
+    root=$(home_root "$home") || fail "root did not resolve"
+    wt=$(make_pool_slot "$home/projects/repo" "$root" repo-reuse 1)
+    owner_home="$home"
+    if [ "$mode" = alias ]; then
+      ln -s "$home" "$dir/home-alias"
+      owner_home="$dir/home-alias"
+    fi
+    printf 'task=holder\nhome=%s\n' "$owner_home" > "$root/.treehouse/repo-reuse/1/.fm-slot-owner"
+    fm_write_meta "$home/state/holder.meta" \
+      "window=firstmate:fm-holder" "worktree=$wt" "project=$home/projects/repo" "kind=ship"
+    cp "$home/state/holder.meta" "$dir/holder-before.meta"
 
-  out=$(run_spawn "$home" "$home/projects/repo" task-n "$wt" "$fakebin" "$dir/tmux.log") \
-    || fail "spawn refused a reusable slot while its previous task record remained: $out"
-  assert_grep "task=task-n" "$root/.treehouse/repo-reuse/1/.fm-slot-owner" "spawn did not claim the reused slot"
-  assert_grep "worktree=$wt" "$home/state/task-n.meta" "spawn did not record the reused slot"
-  assert_grep "treehouse_root=$root" "$home/state/task-n.meta" "spawn did not retain the home's isolated root"
-  cmp -s "$dir/holder-before.meta" "$home/state/holder.meta" \
-    || fail "reusing the slot changed its previous task record"
-  pass "fm-spawn: a reusable same-home slot is claimed while its previous task record remains"
+    out=$(run_spawn "$home" "$home/projects/repo" task-n "$wt" "$fakebin" "$dir/tmux.log") \
+      || fail "spawn refused a reusable $mode slot while its previous task record remained: $out"
+    assert_grep "task=task-n" "$root/.treehouse/repo-reuse/1/.fm-slot-owner" "spawn did not claim the reused slot"
+    assert_grep "worktree=$wt" "$home/state/task-n.meta" "spawn did not record the reused slot"
+    assert_grep "treehouse_root=$root" "$home/state/task-n.meta" "spawn did not retain the home's isolated root"
+    cmp -s "$dir/holder-before.meta" "$home/state/holder.meta" \
+      || fail "reusing the slot changed its previous task record"
+  done
+  pass "fm-spawn: same canonical home reuses a slot while its previous task record remains"
+}
+
+test_spawn_refuses_live_foreign_home_claims() {
+  local mode owner_id dir home other_home fakebin root wt out marker relaunch_id slot_project
+  for mode in fresh shared-clone relaunch; do
+    for owner_id in holder task-n; do
+      dir="$TMP_ROOT/foreign-$mode-$owner_id"
+      home="$dir/home"
+      other_home="$dir/other-home"
+      mkdir -p "$other_home/state"
+      fakebin=$(make_fakebin "$dir")
+      make_home "$home" task-n
+      fm_git_init_commit "$home/projects/repo"
+      root=$(home_root "$home") || fail "root did not resolve"
+      [ "$mode" != relaunch ] || root="$dir/legacy-shared"
+      slot_project="$home/projects/repo"
+      if [ "$mode" = shared-clone ]; then
+        git clone -q "$slot_project" "$other_home/project"
+        slot_project="$other_home/project"
+      fi
+      wt=$(make_pool_slot "$slot_project" "$root" repo-foreign 1)
+      marker="$root/.treehouse/repo-foreign/1/.fm-slot-owner"
+      printf 'task=%s\nhome=%s\n' "$owner_id" "$other_home" > "$marker"
+      cp "$marker" "$dir/claim-before"
+      fm_write_meta "$other_home/state/$owner_id.meta" "worktree=$wt" "kind=ship"
+      if [ "$mode" = relaunch ]; then
+        fm_write_meta "$home/state/task-n.meta" \
+          "window=firstmate:fm-task-n" "endpoint_task_id=task-n" "harness=codex" \
+          "worktree=$wt" "project=$home/projects/repo" "kind=ship" "mode=no-mistakes" "yolo=off"
+        cp "$home/state/task-n.meta" "$dir/task-before.meta"
+      fi
+      relaunch_id=
+      [ "$mode" != relaunch ] || relaunch_id=task-n
+      if out=$(FM_FAKE_RELAUNCH_ID="$relaunch_id" run_spawn "$home" "$home/projects/repo" task-n "$wt" "$fakebin" "$dir/tmux.log" "$mode"); then
+        fail "$mode accepted a slot held by foreign task $owner_id: $out"
+      fi
+      assert_contains "$out" "foreign home $other_home" "$mode did not identify the foreign owner: $out"
+      cmp -s "$marker" "$dir/claim-before" || fail "$mode changed the foreign claim"
+      if [ "$mode" = relaunch ]; then
+        cmp -s "$home/state/task-n.meta" "$dir/task-before.meta" || fail "refused relaunch changed task metadata"
+      else
+        assert_absent "$home/state/task-n.meta" "refused spawn published task metadata"
+      fi
+      assert_present "$wt/.git" "$mode removed the foreign worktree"
+      if [ -f "$dir/tmux.log" ]; then
+        ! grep -Fq 'encode launch-brief' "$dir/tmux.log" || fail "$mode launched into a foreign slot"
+      fi
+      if [ "$mode" = fresh ]; then
+        rm -f "$other_home/state/$owner_id.meta"
+        out=$(run_spawn "$home" "$home/projects/repo" task-n "$wt" "$fakebin" "$dir/stale.log") \
+          || fail "spawn refused a stale foreign-home claim: $out"
+        assert_grep "home=$home" "$marker" "spawn did not replace the stale foreign-home claim"
+      fi
+    done
+  done
+  pass "fm-spawn: fresh allocation and legacy relaunch refuse foreign live claims, even with the same task id"
+}
+
+test_relative_treehouse_roots_resolve_from_project() {
+  local relative dir home project fakebin root wt out n=0
+  for relative in . ./new/pools ../shared-pools 'pool space'; do
+    n=$((n + 1))
+    dir="$TMP_ROOT/relative-$n"
+    home="$dir/home"
+    make_home "$home" task-r
+    project="$home/projects/repo"
+    fm_git_init_commit "$project"
+    mkdir -p "$dir/unrelated"
+    ln -s "$project" "$dir/project-link"
+    fakebin=$(make_fakebin "$dir")
+    root=$(TREEHOUSE_ROOT="$relative" home_root "$home" "$dir/project-link") || fail "relative root $relative did not resolve"
+    case "$root" in "$project"/*/fm-home-*) ;; *) fail "$relative did not resolve against $project: $root" ;; esac
+    wt=$(make_pool_slot "$project" "$root" repo-relative 1)
+    root=$(cd "$root" && pwd -P)
+    out=$(cd "$dir/unrelated" && TREEHOUSE_ROOT="$relative" run_spawn "$home" "$dir/project-link" task-r "$wt" "$fakebin" "$dir/tmux.log") \
+      || fail "spawn failed for relative root $relative: $out"
+    assert_grep "treehouse_root=$root" "$home/state/task-r.meta" "relative CLI root was not recorded as an absolute path"
+    assert_contains "$(cat "$dir/tmux.log")" "treehouse get --root '$root'" "allocation used the wrong relative root"
+    TREEHOUSE_ROOT=elsewhere run_teardown "$home" task-r "$fakebin" "$dir/return.log" > "$dir/out" 2> "$dir/err" \
+      || fail "return failed for relative root $relative: $(cat "$dir/err")"
+    assert_contains "$(cat "$dir/return.log")" "<--root> <$root>" "return ignored the recorded absolute root"
+  done
+  pass "fm-spawn: relative roots resolve from the spawning repository and record absolute CLI roots"
 }
 
 test_real_treehouse_root_round_trip() (
@@ -303,15 +398,22 @@ test_real_treehouse_root_round_trip() (
     cd "$dir/repo" || exit 1
     env HOME="$dir/user" TREEHOUSE_ROOT="$treehouse_env_root" TREEHOUSE_NO_UPDATE_CHECK=1 treehouse "$@"
   )
-  for mode in explicit symlink legacy-default legacy-config legacy-env; do
+  for mode in explicit symlink relative-dot relative-nested relative-parent legacy-default legacy-config legacy-env; do
     rm -f "$dir/repo/treehouse.toml"
     treehouse_env_root=
     cli_root=
     recorded=
     case "$mode" in
-      explicit|symlink)
-        cli_root=$(home_root "$dir/home") || fail "real home root did not resolve"
+      explicit|symlink|relative-*)
+        case "$mode" in
+          relative-dot) treehouse_env_root=. ;;
+          relative-nested) treehouse_env_root=./new/pools ;;
+          relative-parent) treehouse_env_root=../shared-pools ;;
+          *) treehouse_env_root="$TREEHOUSE_ROOT" ;;
+        esac
+        cli_root=$(TREEHOUSE_ROOT="$treehouse_env_root" home_root "$dir/home" "$dir/repo") || fail "real home root did not resolve"
         mkdir -p "$cli_root"
+        cli_root=$(cd "$cli_root" && pwd -P)
         if [ "$mode" = symlink ]; then
           ln -s "$cli_root" "$dir/root-link"
           cli_root="$dir/root-link"
@@ -362,4 +464,6 @@ test_legacy_record_returns_through_its_original_root
 test_mismatched_root_refuses_teardown_without_mutation
 test_spawn_refuses_slot_outside_home_root
 test_spawn_reuses_slot_with_previous_task_record
+test_spawn_refuses_live_foreign_home_claims
+test_relative_treehouse_roots_resolve_from_project
 test_real_treehouse_root_round_trip

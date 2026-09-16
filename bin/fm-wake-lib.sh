@@ -1280,12 +1280,19 @@ fm_treehouse_pool_slot() {  # <project-dir> <worktree>
 # it at the time (the legacy shared pool). fm_treehouse_task_root resolves that
 # root from the slot path itself, so legacy slots drain through their original
 # pool with no migration, move, or reinterpretation.
-fm_treehouse_home_root() {  # [<fm-home>]
-  local home=${1:-$FM_HOME} base hash
+fm_treehouse_home_root() {  # [<fm-home>] [<project-dir>]
+  local home=${1:-$FM_HOME} project=${2:-} base hash
   home=$(CDPATH='' cd -- "$home" 2>/dev/null && pwd -P) || return 1
   base=${TREEHOUSE_ROOT:-${HOME:-}/.treehouse}
   [ -n "${HOME:-}" ] || [ -n "${TREEHOUSE_ROOT:-}" ] || return 1
-  case "$base" in /*) ;; *) return 1 ;; esac
+  case "$base" in
+    /*) ;;
+    *)
+      [ -n "$project" ] || return 1
+      project=$(CDPATH='' cd -- "$project" 2>/dev/null && pwd -P) || return 1
+      base="$project/$base"
+      ;;
+  esac
   case "$base" in *[$'\n\r']*) return 1 ;; esac
   hash=$(printf '%s' "$home" | git hash-object --stdin 2>/dev/null) || return 1
   [ -n "$hash" ] || return 1
