@@ -9,8 +9,6 @@
 # home now allocates from its own deterministic root, records that root in the
 # task's meta, and returns through it; a record that predates the field keeps
 # resolving its original pool, and a root that does not contain the slot refuses.
-# A slot whose claim names a task that still has a record refuses at spawn on
-# every harness and backend, not only where a harness-specific guard catches it.
 set -u
 
 # shellcheck source=tests/fixtures.sh
@@ -271,38 +269,28 @@ test_spawn_refuses_slot_outside_home_root() {
   pass "fm-spawn: a slot Treehouse enters outside this home's root refuses rather than claiming it"
 }
 
-# --- runtime-independent ownership assertion ---------------------------------
-
-# The slot's claim names a task whose record still exists in its home: that task
-# is between spawn and teardown, so the slot is still its own whatever
-# Treehouse's process lease says. The launch refuses without touching the claim.
-test_spawn_refuses_slot_another_live_task_holds() {
-  local dir=$TMP_ROOT/live-claim home=$TMP_ROOT/live-claim/home other_home=$TMP_ROOT/live-claim/other-home
-  local fakebin root wt out rc
-  mkdir -p "$dir" "$other_home/state"
+test_spawn_reuses_slot_with_previous_task_record() {
+  local dir=$TMP_ROOT/reuse-claim home=$TMP_ROOT/reuse-claim/home
+  local fakebin root wt out
+  mkdir -p "$dir"
   fakebin=$(make_fakebin "$dir")
   make_home "$home" task-n
   fm_git_init_commit "$home/projects/repo"
   root=$(home_root "$home") || fail "root did not resolve"
-  wt=$(make_pool_slot "$home/projects/repo" "$root" repo-live 1)
-  printf 'task=holder\nhome=%s\n' "$other_home" > "$root/.treehouse/repo-live/1/.fm-slot-owner"
-  fm_write_meta "$other_home/state/holder.meta" "window=firstmate:fm-holder" "worktree=$wt" "kind=ship"
-  set +e
-  out=$(run_spawn "$home" "$home/projects/repo" task-n "$wt" "$fakebin" "$dir/tmux.log")
-  rc=$?
-  set -e
-  [ "$rc" -ne 0 ] || fail "spawn launched into a slot another live task holds: $out"
-  assert_contains "$out" "task holder of home $other_home still holds" "spawn did not name the live holder: $out"
-  assert_grep "task=holder" "$root/.treehouse/repo-live/1/.fm-slot-owner" "spawn replaced the live holder's claim"
-  assert_absent "$home/state/task-n.meta" "spawn published a record for a refused slot"
+  wt=$(make_pool_slot "$home/projects/repo" "$root" repo-reuse 1)
+  printf 'task=holder\nhome=%s\n' "$home" > "$root/.treehouse/repo-reuse/1/.fm-slot-owner"
+  fm_write_meta "$home/state/holder.meta" \
+    "window=firstmate:fm-holder" "worktree=$wt" "project=$home/projects/repo" "kind=ship"
+  cp "$home/state/holder.meta" "$dir/holder-before.meta"
 
-  # The same claim with the holder's record gone is stale: the launch proceeds
-  # and the claim moves to the new task.
-  rm -f "$other_home/state/holder.meta"
-  out=$(run_spawn "$home" "$home/projects/repo" task-n "$wt" "$fakebin" "$dir/tmux2.log") \
-    || fail "spawn refused a slot whose previous holder left no record: $out"
-  assert_grep "task=task-n" "$root/.treehouse/repo-live/1/.fm-slot-owner" "spawn did not take over a stale claim"
-  pass "fm-spawn: a slot claimed by a task that still has a record refuses on every runtime; a stale claim is replaced"
+  out=$(run_spawn "$home" "$home/projects/repo" task-n "$wt" "$fakebin" "$dir/tmux.log") \
+    || fail "spawn refused a reusable slot while its previous task record remained: $out"
+  assert_grep "task=task-n" "$root/.treehouse/repo-reuse/1/.fm-slot-owner" "spawn did not claim the reused slot"
+  assert_grep "worktree=$wt" "$home/state/task-n.meta" "spawn did not record the reused slot"
+  assert_grep "treehouse_root=$root" "$home/state/task-n.meta" "spawn did not retain the home's isolated root"
+  cmp -s "$dir/holder-before.meta" "$home/state/holder.meta" \
+    || fail "reusing the slot changed its previous task record"
+  pass "fm-spawn: a reusable same-home slot is claimed while its previous task record remains"
 }
 
 test_real_treehouse_root_round_trip() (
@@ -373,5 +361,5 @@ test_teardown_returns_through_recorded_root
 test_legacy_record_returns_through_its_original_root
 test_mismatched_root_refuses_teardown_without_mutation
 test_spawn_refuses_slot_outside_home_root
-test_spawn_refuses_slot_another_live_task_holds
+test_spawn_reuses_slot_with_previous_task_record
 test_real_treehouse_root_round_trip
