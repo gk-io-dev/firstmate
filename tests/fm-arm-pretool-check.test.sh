@@ -14,6 +14,10 @@ set -u
 CHECK="$ROOT/bin/fm-arm-pretool-check.sh"
 POLICY="$ROOT/bin/fm-arm-command-policy.mjs"
 
+# This suite simulates a genuine single-checkout primary session: the seatbelt
+# resolves its active home from FM_HOME, so pin it to $ROOT here.
+export FM_HOME="$ROOT"
+
 # --- full cross-harness acceptance matrix ----------------------------------
 
 MATRIX_IDS=()
