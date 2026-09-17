@@ -237,6 +237,32 @@ if [ "${FM_TEST_SKIP_ORPHAN_REAP:-0}" != 1 ]; then
   fm_test_reap_orphans
 fi
 
+# --- ambient-home poison guard -----------------------------------------------
+#
+# Publishers such as fm-inactive-reconcile.sh fall back from FM_HOME through
+# FM_ROOT_OVERRIDE to the tracked code root. When that checkout is also a live
+# fleet home, a forgotten fixture override can publish fabricated task or PR
+# outcomes into real state and secondmate parent channels.
+#
+# On first source, discard inherited root and operational-directory overrides
+# listed below and replace even an inherited FM_HOME with a fresh per-process
+# scratch directory, registered for cleanup with a guard marker but no fleet state.
+# Clearing directory overrides matters because they take precedence over FM_HOME.
+# Fixtures needing a home must seed and explicitly set their private FM_HOME
+# after sourcing this library; set any required directory overrides then too.
+# Setting FM_ROOT_OVERRIDE alone does not replace the exported guard home.
+# Calls that omit a fixture home can fail or do nothing against missing state,
+# or write into scratch space, without falling back to the live fleet home.
+# This is a safe default, not a sandbox against later explicit overrides.
+# tests/fm-ambient-home-guard.test.sh compares a private sentinel with and
+# without the guard and checks protection against inherited directory overrides.
+unset FM_ROOT_OVERRIDE FM_STATE_OVERRIDE FM_DATA_OVERRIDE FM_CONFIG_OVERRIDE FM_PROJECTS_OVERRIDE FM_PENDING_REPLY_DIR_OVERRIDE
+FM_TEST_AMBIENT_GUARD=$(fm_test_tmproot fm-ambient-guard) || return 1
+printf 'do-not-use: catches a forgotten FM_HOME override; see tests/lib.sh ambient-home poison guard\n' \
+  > "$FM_TEST_AMBIENT_GUARD/.fm-ambient-guard" || return 1
+FM_HOME="$FM_TEST_AMBIENT_GUARD"
+export FM_HOME
+
 # --- live-capability gate ---------------------------------------------------
 #
 # fm_live_gate <policy> <vars> [tool ...]
