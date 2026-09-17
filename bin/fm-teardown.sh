@@ -161,6 +161,16 @@
 # leased home releases its durable treehouse lease so the pool slot is freed,
 # never left leased forever. If the treehouse return fails, teardown leaves the
 # leased home and state in place instead of hiding a still-held lease.
+# Treehouse root (per-home pools): every `treehouse return` on a task's slot
+# passes `--root <root>`, where <root> is reconciled by bin/fm-wake-lib.sh's
+# fm_treehouse_task_root between the record's treehouse_root= line and the root
+# the slot actually sits under. A record that predates the field (no
+# treehouse_root=) resolves to the slot's own root, so legacy slots drain through
+# the pool that allocated them with no migration; a record whose treehouse_root=
+# does not contain its worktree REFUSES before any mutation, because returning
+# through the wrong root would act on another home's slot. A secondmate home is
+# the primary's own durable lease from the firstmate repository's pool and is
+# returned without --root, exactly as it was leased.
 # Usage: fm-teardown.sh <task-id> [--force] [--legacy-record]
 #   --force skips ordinary-task dirty and landed-work checks, skips scout report
 #   checks, and discards secondmate child work for kind=secondmate. Only use it
@@ -1008,6 +1018,17 @@ elif [ "$TREEHOUSE_SLOT_LOCK_REQUIRED" = 1 ]; then
   echo "REFUSED: task $ID stopped naming a live Treehouse slot while teardown acquired its locks; nothing was changed" >&2
   exit 1
 fi
+# The root every Treehouse call on this task's slot uses (script header,
+# "Treehouse root"): the recorded treehouse_root= when it contains the slot, the
+# slot's own root for a record that predates the field, and a refusal otherwise.
+TEARDOWN_TREEHOUSE_ROOT=
+if [ -n "$EXPECTED_TREEHOUSE_PROJECT_LOCK" ]; then
+  fm_treehouse_task_root "$(fm_meta_get "$META" treehouse_root)" "$WT" || {
+    echo "REFUSED: task $ID's worktree $WT is not under its recorded Treehouse root ($FM_TREEHOUSE_ROOT_REASON); returning it through that root would act on another home's slot, so nothing was changed - not even with --force." >&2
+    exit 1
+  }
+  TEARDOWN_TREEHOUSE_ROOT=$FM_TREEHOUSE_TASK_ROOT
+fi
 MODE=$(grep '^mode=' "$META" | cut -d= -f2- || true)
 [ -n "$MODE" ] || MODE=no-mistakes
 
@@ -1635,13 +1656,18 @@ cleanup_stale_lock_for_safety_check() {
 
 # Return a worktree/home via `treehouse return --force`, tolerating a transient or
 # stale git index.lock left by a killed crew process. See the script header.
-teardown_treehouse_return() {
-  local dir=$1 cd_dir=$2 label=$3 post_cleanup_check=${4:-}
+# A nonempty <root> is passed as `--root <root>`, so the return acts on the pool
+# the slot was taken from (script header, "Treehouse root"); an empty <root>
+# leaves the pool to Treehouse's own resolution, as a secondmate home lease needs.
+teardown_treehouse_return() {  # <dir> <cd-dir> <label> [post-cleanup-check] [root]
+  local dir=$1 cd_dir=$2 label=$3 post_cleanup_check=${4:-} root=${5:-}
   local out lock attempt=0 max_retries lock_desc
+  local -a root_args=()
+  [ -z "$root" ] || root_args=(--root "$root")
 
   # Capture stdout+stderr so non-lock failures stay visible and lock failures can
   # be matched by signature even when the lock file is already gone mid-check.
-  if out=$( ( cd "$cd_dir" && treehouse return --force "$dir" ) 2>&1 ); then
+  if out=$( ( cd "$cd_dir" && treehouse return "${root_args[@]+"${root_args[@]}"}" --force "$dir" ) 2>&1 ); then
     [ -n "$out" ] && printf '%s\n' "$out"
     return 0
   fi
@@ -1666,7 +1692,7 @@ teardown_treehouse_return() {
     echo "teardown: $label return failed with transient git lock ($lock_desc); waiting ${TREEHOUSE_RETURN_LOCK_RETRY_WAIT_SECS}s and retrying ($attempt/${max_retries})" >&2
     sleep "$TREEHOUSE_RETURN_LOCK_RETRY_WAIT_SECS"
 
-    if out=$( ( cd "$cd_dir" && treehouse return --force "$dir" ) 2>&1 ); then
+    if out=$( ( cd "$cd_dir" && treehouse return "${root_args[@]+"${root_args[@]}"}" --force "$dir" ) 2>&1 ); then
       [ -n "$out" ] && printf '%s\n' "$out"
       echo "teardown: $label return succeeded on retry; lock cleared on its own" >&2
       return 0
@@ -1693,7 +1719,7 @@ teardown_treehouse_return() {
           return 1
         fi
       fi
-      if out=$( ( cd "$cd_dir" && treehouse return --force "$dir" ) 2>&1 ); then
+      if out=$( ( cd "$cd_dir" && treehouse return "${root_args[@]+"${root_args[@]}"}" --force "$dir" ) 2>&1 ); then
         [ -n "$out" ] && printf '%s\n' "$out"
         echo "teardown: $label return succeeded after stale-lock cleanup" >&2
         return 0
@@ -2816,6 +2842,10 @@ preflight_descendant_treehouse_slots() {
       continue
     fi
     fm_backend_validate_task_endpoint "$meta" "$task_id" || return 1
+    fm_treehouse_task_root "$(meta_value "$meta" treehouse_root)" "$worktree" || {
+      echo "REFUSED: child $task_id's worktree $worktree is not under its recorded Treehouse root ($FM_TREEHOUSE_ROOT_REASON); forced teardown changed nothing" >&2
+      return 1
+    }
     require_exclusive_worktree_slot_record "$meta" "$task_id" "$state" "$worktree" || return 1
     owner_rc=0
     require_owned_worktree_slot_record "$task_id" "$worktree" || owner_rc=$?
@@ -3038,7 +3068,7 @@ endpoint_close_refusal() {  # <subject> <backend> <target> <honors-force>
 }
 
 cleanup_firstmate_home_children() {
-  local home=$1 sub_state child_meta child_id child_t child_wt child_proj child_kind child_home child_backend child_orca_worktree_id child_return_rc child_busy_gen child_owner_rc
+  local home=$1 sub_state child_meta child_id child_t child_wt child_proj child_kind child_home child_backend child_orca_worktree_id child_return_rc child_busy_gen child_owner_rc child_root
   sub_state="$home/state"
   [ -d "$sub_state" ] || return 0
   for child_meta in "$sub_state"/*.meta; do
@@ -3115,7 +3145,18 @@ cleanup_firstmate_home_children() {
           "$child_wt/.opencode/plugins/fm-busy-state.js" \
           "$child_wt/.fm-grok-turnend" "$child_wt/.fm-kimi-turnend"
         if [ -n "$child_proj" ] && [ -d "$child_proj" ] && command -v treehouse >/dev/null 2>&1; then
-          if teardown_treehouse_return "$child_wt" "$child_proj" "child worktree"; then
+          # Only a recognized pool slot is returned through a root; the
+          # preflight above already refused a slot its recorded root does not
+          # contain, and the same reconciliation here picks the root to pass.
+          child_root=
+          if fm_treehouse_pool_slot "$child_proj" "$child_wt"; then
+            fm_treehouse_task_root "$(meta_value "$child_meta" treehouse_root)" "$child_wt" || {
+              echo "REFUSED: child $child_id's worktree $child_wt is not under its recorded Treehouse root ($FM_TREEHOUSE_ROOT_REASON); its slot was left untouched" >&2
+              return 1
+            }
+            child_root=$FM_TREEHOUSE_TASK_ROOT
+          fi
+          if teardown_treehouse_return "$child_wt" "$child_proj" "child worktree" "" "$child_root"; then
             fm_treehouse_slot_owner_release "$child_wt" "$child_id"
           else
             child_return_rc=$?
@@ -3442,7 +3483,7 @@ elif [ -d "$WT" ] && [ "$KIND" != secondmate ]; then
   if [ "$FORCE" != "--force" ] && [ "$KIND" != scout ] && [ "$KIND" != secondmate ]; then
     post_lock_cleanup_check=validate_worktree_teardown_safety
   fi
-  teardown_treehouse_return "$WT" "$PROJ" "worktree" "$post_lock_cleanup_check" || {
+  teardown_treehouse_return "$WT" "$PROJ" "worktree" "$post_lock_cleanup_check" "$TEARDOWN_TREEHOUSE_ROOT" || {
     echo "error: treehouse return failed for worktree $WT; teardown aborted" >&2
     exit 1
   }

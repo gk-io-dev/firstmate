@@ -347,6 +347,17 @@
 # A ship task records the explicit mode/yolo it was passed; a secondmate spawn records
 # mode=secondmate, yolo=off, home=, and projects=; a scout records neither, and both the
 # success line and state/<id>.meta omit them.
+# A ship or scout spawn on a Treehouse-backed backend (every backend except orca)
+# acquires its slot with `treehouse get --root <root>`, where <root> is this
+# home's own CLI root (bin/fm-wake-lib.sh's fm_treehouse_home_root), and records
+# that absolute root as treehouse_root= in state/<id>.meta. A slot outside its pool
+# refuses the launch. A relaunch keeps the recorded treehouse_root= line; a record without
+# one predates the field and resolves its root from the slot path itself.
+# Fresh allocation and relaunch refuse a slot whose owner claim names another
+# canonical home with an extant task record, independently of runtime liveness.
+# A prior record in the same canonical home does not reserve a reusable slot;
+# this check leaves Treehouse's allocation eligibility and teardown's ownership
+# proof intact. Missing-home or unreadable claims refuse rather than guess.
 # Every fresh spawn or relaunch records a new spawn_gen= incarnation token so durable
 # consumers can distinguish a replacement worker that reuses the same task id.
 # When the home session's frozen trace-context decision is enabled (see
@@ -1046,6 +1057,7 @@ SPAWN_TASK_SET_LOCK_HELD=0
 SPAWN_TREEHOUSE_PROJECT_LOCK=
 SPAWN_TREEHOUSE_PROJECT_LOCK_HELD=0
 SPAWN_SLOT_CLAIMED=0
+SPAWN_TREEHOUSE_ROOT=
 RELAUNCH_REPLACEMENT_PENDING=0
 RELAUNCH_REPLACEMENT_BUSY_GEN=
 RELAUNCH_REPLACEMENT_HARNESS=
@@ -2703,6 +2715,33 @@ spawn_worktree_isolated() { # <path>
   return 0
 }
 
+spawn_refuse_live_foreign_claim() {
+  local worktree=$1 inspect_target=$2 owner_id owner_home owner_meta
+  fm_treehouse_slot_owner_state "$worktree" "$ID"
+  case "$FM_TREEHOUSE_SLOT_OWNER" in
+    absent) return 0 ;;
+    mine|other)
+      owner_id=$FM_TREEHOUSE_SLOT_OWNER_ID
+      owner_home=$FM_TREEHOUSE_SLOT_OWNER_HOME
+      if [ -z "$owner_home" ]; then
+        echo "error: Treehouse slot $worktree is claimed by task $owner_id without a home; refusing to launch without knowing which home owns it; inspect window $inspect_target" >&2
+        return 1
+      fi
+      if [ "$(real_path_or_raw "$owner_home")" = "$(real_path_or_raw "$FM_HOME")" ]; then
+        return 0
+      fi
+      owner_meta="$owner_home/state/$owner_id.meta"
+      if [ -e "$owner_meta" ] || [ -L "$owner_meta" ]; then
+        echo "error: Treehouse slot $worktree is still held by task $owner_id of foreign home $owner_home (record $owner_meta exists); refusing to launch; inspect window $inspect_target" >&2
+        return 1
+      fi
+      return 0
+      ;;
+  esac
+  echo "error: Treehouse slot $worktree has an unreadable owner claim; refusing to launch without knowing which home owns it; inspect window $inspect_target" >&2
+  return 1
+}
+
 validate_spawn_worktree() { # <source> <inspect-target>
   local source=$1 inspect_target=$2
   if ! spawn_worktree_isolated "$WT"; then
@@ -2946,6 +2985,9 @@ if [ "$RELAUNCH" -eq 1 ]; then
   # A secondmate's home already resolved WT above through the same validation a
   # fresh secondmate spawn uses; every other kind takes the recorded worktree.
   [ "$KIND" = secondmate ] || WT=$RELAUNCH_WT
+  if [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
+    spawn_refuse_live_foreign_claim "$WT" "$T" || exit 1
+  fi
   WT_TARGET=$T
   SES=${T%%:*}
 else
@@ -3464,7 +3506,23 @@ if [ "$RELAUNCH" -eq 1 ]; then
   fi
   [ "$KIND" = secondmate ] || validate_spawn_worktree "relaunch" "$T"
 elif [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
-  spawn_send_text_line "$WT_TARGET" 'treehouse get'
+  # Acquire the slot from THIS home's Treehouse root (bin/fm-wake-lib.sh's
+  # fm_treehouse_home_root owns the contract). Treehouse names a pool after the
+  # repository, so without an explicit root two homes holding clones of one
+  # remote share a single pool and can be handed each other's slots. The root
+  # is passed as --root, which overrides TREEHOUSE_ROOT and any treehouse.toml
+  # in the pane's own environment, and is recorded below as treehouse_root= so
+  # every later call on the slot uses the root it was actually taken from.
+  SPAWN_TREEHOUSE_ROOT=$(fm_treehouse_home_root "$FM_HOME" "$PROJ_ABS") || {
+    echo "error: could not resolve this home's Treehouse root for $FM_HOME; refusing to allocate from a pool another home may share" >&2
+    exit 1
+  }
+  mkdir -p -- "$SPAWN_TREEHOUSE_ROOT" 2>/dev/null || {
+    echo "error: could not create this home's Treehouse root $SPAWN_TREEHOUSE_ROOT" >&2
+    exit 1
+  }
+  SPAWN_TREEHOUSE_ROOT=$(CDPATH='' cd -- "$SPAWN_TREEHOUSE_ROOT" && pwd -P) || exit 1
+  spawn_send_text_line "$WT_TARGET" "treehouse get --root $(shell_quote "$SPAWN_TREEHOUSE_ROOT")"
 
   # Wait for the treehouse subshell: the pane's cwd moves from the project to the worktree.
   # Target the stable window id, not the name: if the name is ever lost (e.g. an
@@ -3537,7 +3595,12 @@ elif [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
   # under its successor.
   # Written under the Treehouse project lock held from before slot allocation
   # through metadata publication, so no other spawn or return sees a half-claim.
+  spawn_refuse_live_foreign_claim "$WT" "$T" || exit 1
   if fm_treehouse_pool_slot "$PROJ_ABS" "$WT"; then
+    fm_treehouse_task_root "$SPAWN_TREEHOUSE_ROOT" "$WT" || {
+      echo "error: treehouse get entered $WT outside this home's Treehouse root ($FM_TREEHOUSE_ROOT_REASON); refusing to launch into a slot another home may own; inspect window $T" >&2
+      exit 1
+    }
     if ! fm_treehouse_slot_owner_claim "$WT" "$ID" "$FM_HOME"; then
       echo "error: could not claim Treehouse pool slot $WT for task $ID; refusing to launch a worker whose slot cannot later be proved to be its own; inspect window $T" >&2
       exit 1
@@ -4074,6 +4137,11 @@ preserve_relaunch_meta() {
   echo "endpoint_task_id=$ID"
   echo "worktree=$WT"
   echo "project=$PROJ_ABS"
+  # The Treehouse root the slot was taken from (fm_treehouse_home_root). Written
+  # only by the fresh spawn that ran `treehouse get`; a relaunch passes the
+  # recorded line through untouched, and a record without it predates the field
+  # and resolves its root from the slot's own path (fm_treehouse_task_root).
+  [ "$RELAUNCH" -eq 1 ] || [ -z "$SPAWN_TREEHOUSE_ROOT" ] || echo "treehouse_root=$SPAWN_TREEHOUSE_ROOT"
   echo "harness=$HARNESS"
   echo "kind=$KIND"
   [ -z "$MODE" ] || echo "mode=$MODE"

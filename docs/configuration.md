@@ -129,6 +129,11 @@ Every routine firstmate backlog command therefore runs through [`bin/fm-tasks-ax
 For spawn-capable adapters, the runtime session-provider backend controls where task windows/endpoints are created, captured, sent to, watched, and killed.
 `tmux` is the verified reference backend (see [`docs/tmux-backend.md`](tmux-backend.md)); `herdr` has its own required CI lane (see [`docs/herdr-backend.md`](herdr-backend.md)); `zellij`, `orca`, and `cmux` remain experimental spawn backends with no dedicated real-backend CI lane (see [`docs/zellij-backend.md`](zellij-backend.md), [`docs/orca-backend.md`](orca-backend.md), and [`docs/cmux-backend.md`](cmux-backend.md)).
 Treehouse remains the worktree provider for tmux, herdr, zellij, and cmux, since herdr, zellij, and cmux are session providers only; Orca provides both the task worktree and terminal endpoint.
+Fresh ship and scout allocations use separate Treehouse pools for each canonical Firstmate home, including when homes hold clones of the same remote.
+`TREEHOUSE_ROOT` selects the base for these pools; relative values resolve from the spawning repository, and unset or empty values use `~/.treehouse`.
+The task records its absolute CLI root for later return and recovery, and a mismatch with the slot's actual pool refuses the operation.
+Legacy tasks keep their original pools, and secondmate home leases retain the provisioning behavior owned by [`bin/fm-home-seed.sh`](../bin/fm-home-seed.sh).
+[`bin/fm-wake-lib.sh`](../bin/fm-wake-lib.sh)'s `fm_treehouse_home_root` and `fm_treehouse_task_root` own root derivation and reconciliation; [`tests/fm-treehouse-pool-isolation.test.sh`](../tests/fm-treehouse-pool-isolation.test.sh) covers allocation, recovery, and return.
 New spawns choose the backend in this order: an explicit `--backend` flag that current authority for that exact task alone has authorized (a present captain instruction or the task's own accepted brief; never later-task precedent by analogy), then `FM_BACKEND`, then the first non-empty line of local gitignored `config/backend`, then runtime auto-detection from `$TMUX`, `HERDR_ENV=1`, or cmux runtime signals, then default `tmux`.
 If more than one runtime marker is present, detection resolves innermost-first: `$TMUX` is checked before `HERDR_ENV=1`, which is checked before cmux's primary `CMUX_WORKSPACE_ID` marker and its documented fallback signals - tmux or herdr started from inside a cmux terminal is the innermost, currently-executing layer, while cmux itself (a terminal application, not a nestable multiplexer) is always checked last.
 See [`docs/cmux-backend.md`](cmux-backend.md#runtime-detection) for why cmux can be selected when `CMUX_WORKSPACE_ID` is absent.
@@ -471,7 +476,8 @@ That delta is owned in code by `fm_backend_required_tools` in `bin/fm-backend.sh
 Backend tool availability uses the adapter's own executable resolver, so bootstrap and spawn agree on supported non-`PATH` locations such as cmux's bundled CLI.
 An unknown resolved backend emits `BACKEND_INVALID` and blocks dispatch instead of silently dropping its dependency delta or falling back to tmux.
 Orca provides both the task worktree and terminal endpoint (see "Runtime backend" above), so `backend=orca` requires only `orca` on top of the universal toolchain and skips both `treehouse` and every other backend's session CLI.
-A herdr, zellij, or cmux home is therefore never told `tmux` is missing, and the `treehouse` durable-lease upgrade check runs only for the backends that actually use treehouse.
+A herdr, zellij, or cmux home is therefore never told `tmux` is missing.
+For backends that use Treehouse, bootstrap requires a successful `treehouse get --help` probe advertising both `--lease` and `--root`; an incompatible installation produces an upgrade diagnostic with the install command.
 When `config/crew-dispatch.json` exists, bootstrap also requires `jq` for dispatch profile validation.
 When Relay is opted in, bootstrap also requires `curl` and `jq` before arming the relay poll shim.
 `tasks-axi` and `quota-axi` are essential bootstrap tools in every profile.
@@ -1078,6 +1084,7 @@ FM_WATCH_TRIAGE_LOG_MAX_BYTES=262144   # size cap for the watcher's absorbed-wak
 FM_FLEET_SYNC_BOOTSTRAP_TIMEOUT=     # optional seconds allowed for bootstrap's best-effort clone refresh; unset/blank defaults to max(20, 5 + 3 * origin-backed-project-count)
 FM_FLEET_PRUNE=1        # set to 0 to skip pruning local branches whose upstream is gone
 FM_STALE_WORKTREE_LOCK_AGE_SECS=30       # min mtime age before fm-teardown.sh treats a leftover worktree git index.lock as provably stale
+TREEHOUSE_ROOT=          # optional worker-pool base; see "Runtime backend" for root selection
 FM_TREEHOUSE_RETURN_LOCK_RETRIES=3        # retries after a treehouse return fails on the transient git index.lock signature
 FM_TREEHOUSE_RETURN_LOCK_RETRY_WAIT_SECS=1 # seconds fm-teardown.sh waits before each retry after that signature
 FM_STALE_WORKTREE_LOCK_RETRY_WAIT_SECS=   # legacy alias for FM_TREEHOUSE_RETURN_LOCK_RETRY_WAIT_SECS when the new variable is unset
