@@ -239,10 +239,6 @@ fm_afk_contract_usage() {
   sed -n '/^# Usage:/,/^# CROSS-SUBSYSTEM LOCK/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'
 }
 
-fm_afk_contract_now_iso() {
-  date -u +%Y-%m-%dT%H:%M:%SZ
-}
-
 # Derives the ISO string from an already-captured epoch, so an
 # entered/entered_epoch (or confirmed/confirmed_epoch) pair written into one
 # record can never straddle a second boundary the way two independent `date`
