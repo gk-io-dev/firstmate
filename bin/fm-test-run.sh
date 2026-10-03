@@ -393,7 +393,7 @@ family_for_basename() {
     fm-trace-context-spawn.test.sh|fm-spawn-worktree-settle.test.sh|\
     fm-spawn-compact-adviser-disable.test.sh|\
     fm-spawn-compact-adviser-disable-remote.test.sh|\
-    fm-teardown-endpoint-safety.test.sh)
+    fm-teardown-endpoint-safety.test.sh|fm-treehouse-pool-isolation.test.sh)
       printf '%s\n' backend-dispatch
       ;;
     fm-check-unregister.test.sh|fm-pr-check-security.test.sh|fm-pr-merge.test.sh|\
@@ -871,6 +871,7 @@ tests/fm-tmux-agent-liveness.test.sh 3770
 tests/fm-tool-update-check.test.sh 14383
 tests/fm-trace-context-lib.test.sh 221
 tests/fm-trace-context-spawn.test.sh 57488
+tests/fm-treehouse-pool-isolation.test.sh 15000
 tests/fm-turnend-foreign-owner-arm-fix.test.sh 5575
 tests/fm-turnend-guard.test.sh 34727
 tests/fm-update.test.sh 11894

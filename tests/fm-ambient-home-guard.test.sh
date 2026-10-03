@@ -49,8 +49,21 @@ EOF
   fm_write_secondmate_meta "$main/state/mate.meta" "$mate"
   printf 'working: delegated scope\n' > "$main/state/mate.status"
 
-  fm_write_meta "$mate/state/leak-child.meta" \
-    "window=firstmate:fm-leak-child" "worktree=$mate/projects/leak-child" "project=alpha" \
+  # bin/fm-dod-lib.sh accepts a CI-ready ship done: only when the copy's named
+  # head is reachable outside the disposable worker copy, so the child needs a
+  # real clone whose HEAD also lives on a remote-tracking ref.
+  local origin child
+  origin="$root/origin.git"; child="$mate/projects/leak-child"
+  git init -q --bare "$origin"
+  git clone -q "$origin" "$child" 2>/dev/null
+  (
+    cd "$child" || exit 1
+    git -c user.email=t@example.com -c user.name=t commit -q --allow-empty -m 'child head'
+    git push -q origin HEAD:refs/heads/main
+  ) >/dev/null 2>&1
+
+  fm_write_meta "$child.meta" \
+    "window=firstmate:fm-leak-child" "worktree=$child" "project=alpha" \
     'harness=codex' 'kind=ship' 'mode=no-mistakes' 'yolo=off' \
     "spawn_gen=s1" 'pr=https://github.com/example/repo/pull/1'
   printf 'done: PR https://github.com/example/repo/pull/1 checks green\n' > "$mate/state/leak-child.status"

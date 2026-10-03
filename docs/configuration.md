@@ -423,6 +423,11 @@ For spawn-capable adapters, the runtime session-provider backend controls where 
 | `cmux` | Experimental; no dedicated real-backend CI lane | [`docs/cmux-backend.md`](cmux-backend.md) |
 
 Treehouse remains the worktree provider for tmux, herdr, zellij, and cmux, since herdr, zellij, and cmux are session providers only; Orca provides both the task worktree and terminal endpoint.
+Fresh ship and scout allocations use separate Treehouse pools for each canonical Firstmate home, including when homes hold clones of the same remote.
+`TREEHOUSE_ROOT` selects the base for these pools; relative values resolve from the spawning repository, and unset or empty values use `~/.treehouse`.
+The task records its absolute CLI root for later return and recovery, and a mismatch with the slot's actual pool refuses the operation.
+Legacy tasks keep their original pools, and secondmate home leases retain the provisioning behavior owned by [`bin/fm-home-seed.sh`](../bin/fm-home-seed.sh).
+[`bin/fm-wake-lib.sh`](../bin/fm-wake-lib.sh)'s `fm_treehouse_home_root` and `fm_treehouse_task_root` own root derivation and reconciliation; [`tests/fm-treehouse-pool-isolation.test.sh`](../tests/fm-treehouse-pool-isolation.test.sh) covers allocation, recovery, and return.
 
 ### Backend selection order
 
@@ -1264,7 +1269,8 @@ Backend tool availability uses the adapter's own executable resolver, so bootstr
 An unknown resolved backend emits `BACKEND_INVALID` and blocks dispatch instead of silently dropping its dependency delta or falling back to tmux.
 
 Orca provides both the task worktree and terminal endpoint (see "Runtime backend" above), so `backend=orca` requires only `orca` on top of the universal toolchain and skips both `treehouse` and every other backend's session CLI.
-A herdr, zellij, or cmux home is therefore never told `tmux` is missing, and the `treehouse` durable-lease upgrade check runs only for the backends that actually use treehouse.
+A herdr, zellij, or cmux home is therefore never told `tmux` is missing.
+For backends that use Treehouse, bootstrap requires a successful `treehouse get --help` probe advertising both `--lease` and `--root`; an incompatible installation produces an upgrade diagnostic with the install command.
 
 **Feature-specific requirements**
 
@@ -2375,6 +2381,7 @@ FM_WATCH_TRIAGE_LOG_MAX_BYTES=262144   # size cap for the watcher's absorbed-wak
 FM_FLEET_SYNC_BOOTSTRAP_TIMEOUT=     # optional seconds allowed for bootstrap's best-effort clone refresh; unset/blank defaults to max(20, 5 + 3 * origin-backed-project-count)
 FM_FLEET_PRUNE=1        # set to 0 to skip pruning local branches whose upstream is gone
 FM_STALE_WORKTREE_LOCK_AGE_SECS=30       # min mtime age before fm-teardown.sh treats a leftover worktree git index.lock as provably stale
+TREEHOUSE_ROOT=          # optional worker-pool base; see "Runtime backend" for root selection
 FM_TREEHOUSE_RETURN_LOCK_RETRIES=3        # retries after a treehouse return fails on the transient git index.lock signature
 FM_TREEHOUSE_RETURN_LOCK_RETRY_WAIT_SECS=1 # seconds fm-teardown.sh waits before each retry after that signature
 FM_STALE_WORKTREE_LOCK_RETRY_WAIT_SECS=   # legacy alias for FM_TREEHOUSE_RETURN_LOCK_RETRY_WAIT_SECS when the new variable is unset
