@@ -1136,9 +1136,9 @@ test_spawn_default_backend_writes_no_meta_field() {
   fb=$(make_spawn_fakebin "$TMP_ROOT/nobackend-fake" "$wt")
   mkdir -p "$data/$id"; write_spawn_brief "$data/$id/brief.md" "$id"
   state="$TMP_ROOT/nobackend-state"; config="$TMP_ROOT/nobackend-config"
-  mkdir -p "$state" "$config"
+  mkdir -p "$state" "$config" "$TMP_ROOT/spawn-home/state"
 
-  out=$(PATH="$fb:$PATH" FM_ROOT_OVERRIDE="$ROOT" HOME="$SPAWN_HOME" CLAUDE_CONFIG_DIR='' \
+  out=$(PATH="$fb:$PATH" FM_ROOT_OVERRIDE="$ROOT" FM_HOME="$TMP_ROOT/spawn-home" HOME="$SPAWN_HOME" CLAUDE_CONFIG_DIR='' \
     FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$data" FM_CONFIG_OVERRIDE="$config" \
     FM_PROJECTS_OVERRIDE="$TMP_ROOT/unused-projects" FM_SPAWN_NO_GUARD=1 TMUX="fake,1,0" \
     FM_TMUX_LOG="$TMP_ROOT/nobackend.log" \
@@ -1158,11 +1158,11 @@ test_spawn_explicit_backend_flag_beats_autodetect_herdr_env() {
   fb=$(make_spawn_fakebin "$TMP_ROOT/explicit-backend-fake" "$wt")
   mkdir -p "$data/$id"; write_spawn_brief "$data/$id/brief.md" "$id"
   state="$TMP_ROOT/explicit-backend-state"; config="$TMP_ROOT/explicit-backend-config"
-  mkdir -p "$state" "$config"
+  mkdir -p "$state" "$config" "$TMP_ROOT/spawn-home/state"
 
   # HERDR_ENV=1 is present (as if firstmate itself were running under herdr),
   # but an explicit --backend tmux flag must still win outright.
-  out=$(PATH="$fb:$PATH" FM_ROOT_OVERRIDE="$ROOT" HOME="$SPAWN_HOME" CLAUDE_CONFIG_DIR='' \
+  out=$(PATH="$fb:$PATH" FM_ROOT_OVERRIDE="$ROOT" FM_HOME="$TMP_ROOT/spawn-home" HOME="$SPAWN_HOME" CLAUDE_CONFIG_DIR='' \
     FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$data" FM_CONFIG_OVERRIDE="$config" \
     FM_PROJECTS_OVERRIDE="$TMP_ROOT/unused-projects" FM_SPAWN_NO_GUARD=1 TMUX="fake,1,0" HERDR_ENV=1 \
     FM_TMUX_LOG="$TMP_ROOT/explicit-backend.log" \
@@ -1182,14 +1182,14 @@ test_spawn_autodetect_nesting_resolves_tmux_silently() {
   fb=$(make_spawn_fakebin "$TMP_ROOT/nest-fake" "$wt")
   mkdir -p "$data/$id"; write_spawn_brief "$data/$id/brief.md" "$id"
   state="$TMP_ROOT/nest-state"; config="$TMP_ROOT/nest-config"
-  mkdir -p "$state" "$config"
+  mkdir -p "$state" "$config" "$TMP_ROOT/spawn-home/state"
 
   # No --backend, no FM_BACKEND, no config/backend: nothing is explicitly
   # configured, so auto-detect runs. $TMUX and HERDR_ENV=1 are both present
   # (tmux nested inside a herdr pane) - the full fm-spawn.sh pipeline, not just
   # fm_backend_name, must resolve this to tmux and stay completely silent about
   # it (today's default path, byte-identical).
-  out=$(PATH="$fb:$PATH" FM_ROOT_OVERRIDE="$ROOT" HOME="$SPAWN_HOME" CLAUDE_CONFIG_DIR='' \
+  out=$(PATH="$fb:$PATH" FM_ROOT_OVERRIDE="$ROOT" FM_HOME="$TMP_ROOT/spawn-home" HOME="$SPAWN_HOME" CLAUDE_CONFIG_DIR='' \
     FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$data" FM_CONFIG_OVERRIDE="$config" \
     FM_PROJECTS_OVERRIDE="$TMP_ROOT/unused-projects" FM_SPAWN_NO_GUARD=1 TMUX="fake,1,0" HERDR_ENV=1 \
     FM_TMUX_LOG="$TMP_ROOT/nest.log" \
