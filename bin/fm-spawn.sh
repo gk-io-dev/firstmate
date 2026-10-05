@@ -3564,6 +3564,15 @@ if [ "$RELAUNCH" -eq 1 ]; then
   # uncommitted changes are exactly as the previous agent left them, and nothing
   # below may touch them.
   [ "$KIND" = secondmate ] || WT=$RELAUNCH_WT
+  # Refuse before ANY endpoint mutation below. The Treehouse slot check is about
+  # the RECORDED WORKTREE, not the endpoint, so it applies to an adopted and a
+  # rebound endpoint alike; running it here also means a refusal can never leave
+  # a freshly minted herdr tab behind (see the rebind branch below). The recorded
+  # endpoint stays the inspect target either way: on the rebind path it is proven
+  # gone, but it is still the record the task is looked up by.
+  if [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
+    spawn_refuse_live_foreign_claim "$WT" "$RELAUNCH_TARGET" || exit 1
+  fi
   if [ "$RELAUNCH_REBIND" -eq 0 ]; then
     # Adopt the recorded endpoint instead of creating one. This is what keeps a
     # relaunch a REPLACEMENT rather than a second copy of the task: no new
@@ -3643,11 +3652,6 @@ EOF
     T="$HERDR_SES:$HERDR_PANE_ID"
     SES=$HERDR_SES
     WT_TARGET=$T
-  fi
-  # A reused worktree can still carry a Treehouse slot claim recorded by
-  # another canonical home; refuse before adopting the endpoint.
-  if [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
-    spawn_refuse_live_foreign_claim "$WT" "$T" || exit 1
   fi
 else
   case "$BACKEND" in

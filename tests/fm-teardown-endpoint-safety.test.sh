@@ -1013,7 +1013,7 @@ test_stale_record_on_claimed_slot_retires_then_claimant_tears_down() {
   run_case "$dir" "$other" > "$dir/stdout" 2> "$dir/stderr" \
     || fail "claimant teardown failed after the stale record retired: $(cat "$dir/stderr")"
   assert_absent "$dir/home/state/$other.meta" "claimant teardown left its record"
-  assert_absent "$dir/pool/1/.fm-slot-owner" "claimant teardown left its spent slot claim behind"
+  assert_absent "$dir/.treehouse/pool/1/.fm-slot-owner" "claimant teardown left its spent slot claim behind"
   grep -Fq "treehouse <return>" "$dir/runtime.log" \
     || fail "claimant teardown did not return its pool slot: $(cat "$dir/runtime.log")"
 
