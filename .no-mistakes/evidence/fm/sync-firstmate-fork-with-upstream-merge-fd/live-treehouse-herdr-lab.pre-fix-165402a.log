@@ -1,0 +1,67 @@
+
+=== provision lab fm-lab-thpool-58833-26287 ===
+
+=== L1: spawn ta from home-a and tb from home-b (clones of one remote) ===
+spawn ta rc=0
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-a/data/ta/launch-brief.md records no ship branch; defaulting to legacy branch fm/ta
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-a/data/ta/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+spawned ta harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-thpool-58833-26287:w1:p2 worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-130c376bed01/.treehouse/proj-9f24e3/1/proj
+spawn tb rc=0
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-b/data/tb/launch-brief.md records no ship branch; defaulting to legacy branch fm/tb
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-b/data/tb/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+spawned tb harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-thpool-58833-26287:w1:p3 worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-c387d80f5cbc/.treehouse/proj-9f24e3/1/proj
+ta: treehouse_root=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-130c376bed01
+ta: worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-130c376bed01/.treehouse/proj-9f24e3/1/proj
+tb: treehouse_root=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-c387d80f5cbc
+tb: worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-c387d80f5cbc/.treehouse/proj-9f24e3/1/proj
+PASS: L1 each home allocated from its own deterministic root; worktrees live under their recorded roots
+--- treehouse status home-a root
+[{"name":"1","path":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-130c376bed01/.treehouse/proj-9f24e3/1/proj","status":"in-use","flavor":"git","lease_id":"","lease_holder":"","leased_at":null,"processes":[{"pid":62756,"name":"zsh"},{"pid":73296,"name":"sleep"}]}]
+--- treehouse status home-b root
+[{"name":"1","path":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-c387d80f5cbc/.treehouse/proj-9f24e3/1/proj","status":"in-use","flavor":"git","lease_id":"","lease_holder":"","leased_at":null,"processes":[{"pid":76285,"name":"zsh"},{"pid":82650,"name":"sleep"}]}]
+--- ta claim: task=ta home=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-a 
+
+=== L2: endpoint gone + slot claimed by a live foreign-home task -> relaunch must refuse with no new tab ===
+ta recorded window=fm-lab-thpool-58833-26287:w1:p2 herdr_pane_id=w1:p2
+foreign claim now: task=tb home=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-b  (record /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-b/state/tb.meta exists: yes)
+lab panes before relaunch: [{"pane_id":"w1:p3","cwd":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-b/projects/proj"}]
+before relaunch: panes=1 tabs=1
+lab panes after relaunch: [{"pane_id":"w1:p3","cwd":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-b/projects/proj"},{"pane_id":"w1:p4","cwd":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-130c376bed01/.treehouse/proj-9f24e3/1/proj"}]
+relaunch rc=1
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-a/data/ta/launch-brief.md records no ship branch; defaulting to legacy branch fm/ta
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-a/data/ta/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+error: Treehouse slot /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-130c376bed01/.treehouse/proj-9f24e3/1/proj is still held by task tb of foreign home /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-b (record /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-b/state/tb.meta exists); refusing to launch; inspect window fm-lab-thpool-58833-26287:w1:p4
+after relaunch: panes=2 tabs=2
+FAIL: L2 relaunch foreign-claim refusal before rebind
+PASS: L2 ta record unchanged (window=fm-lab-thpool-58833-26287:w1:p2)
+
+=== L3: control - restore own claim, same relaunch rebinds with exactly one fresh pane ===
+relaunch rc=0
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-a/data/ta/launch-brief.md records no ship branch; defaulting to legacy branch fm/ta
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-a/data/ta/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+spawned ta harness=grok kind=ship mode=no-mistakes yolo=off window=fm-lab-thpool-58833-26287:w1:p5 worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-130c376bed01/.treehouse/proj-9f24e3/1/proj
+panes before=2 after=2; new window=fm-lab-thpool-58833-26287:w1:p5 pane=w1:p5
+FAIL: L3 control relaunch
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-a/data/ta/launch-brief.md records no ship branch; defaulting to legacy branch fm/ta
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-a/data/ta/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+spawned ta harness=grok kind=ship mode=no-mistakes yolo=off window=fm-lab-thpool-58833-26287:w1:p5 worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-130c376bed01/.treehouse/proj-9f24e3/1/proj
+
+=== L4: teardown returns each slot through its recorded root ===
+teardown ta rc=0
+🌳 Worktree returned to pool.
+proj: already current
+teardown ta complete (window fm-lab-thpool-58833-26287:w1:p5, worktree /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-130c376bed01/.treehouse/proj-9f24e3/1/proj)
+Backlog: ta just finished (this home keeps no markdown backlog at /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-a/data/backlog.md). Update /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-a/data/backlog.md - move ta to Done, keep Done to the 10 most recent, then re-scan Queued and dispatch only work whose blockers are gone and date is due.
+teardown tb rc=0
+🌳 Worktree returned to pool.
+proj: already current
+teardown tb complete (window fm-lab-thpool-58833-26287:w1:p3, worktree /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-c387d80f5cbc/.treehouse/proj-9f24e3/1/proj)
+Backlog: tb just finished (this home keeps no markdown backlog at /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-b/data/backlog.md). Update /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/home-b/data/backlog.md - move tb to Done, keep Done to the 10 most recent, then re-scan Queued and dispatch only work whose blockers are gone and date is due.
+--- home-a root after teardown: [{"name":"1","path":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-130c376bed01/.treehouse/proj-9f24e3/1/proj","status":"available","flavor":"git","lease_id":"","lease_holder":"","leased_at":null,"processes":[]}]
+--- home-b root after teardown: [{"name":"1","path":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.IxcIUM/treehouse-base/fm-home-c387d80f5cbc/.treehouse/proj-9f24e3/1/proj","status":"available","flavor":"git","lease_id":"","lease_holder":"","leased_at":null,"processes":[]}]
+PASS: L4 both slots returned through their recorded roots and claims released
+
+=== summary: FAILS=2 ===
+
+=== cleanup ===
+lab fm-lab-thpool-58833-26287 torn down (tripwire verified)

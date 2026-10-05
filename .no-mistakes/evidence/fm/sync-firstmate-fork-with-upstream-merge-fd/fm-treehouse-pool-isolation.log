@@ -1,0 +1,34 @@
+ok - fm_treehouse_home_root: deterministic per canonical home, distinct across homes, path-safe under the Treehouse base
+ok - fm-spawn: two homes with clones of one repo allocate under two distinct home-scoped Treehouse roots and record them
+ok - fm-teardown: a task returns its slot through the Treehouse root its record carries
+ok - fm-teardown: a record without treehouse_root= still returns through the pool root that allocated it
+ok - fm-teardown: a recorded root that does not contain the slot refuses and changes nothing, even with --force
+ok - fm-spawn: a slot Treehouse enters outside this home's root refuses rather than claiming it
+ok - fm-spawn: same canonical home reuses a slot while its previous task record remains
+ok - fm-spawn: fresh allocation and legacy relaunch refuse foreign live claims, even with the same task id
+ok - fm-spawn: relative roots resolve from the spawning repository and record absolute CLI roots
+🌳 Setting up worktree...
+🌳 Leased worktree at /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-treehouse-pool-isolation.s2E1Q7/treehouse-base/fm-home-25afe5860f16/.treehouse/repo-a414cc/1/repo. Run 'treehouse return /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-treehouse-pool-isolation.s2E1Q7/treehouse-base/fm-home-25afe5860f16/.treehouse/repo-a414cc/1/repo' to release it.
+🌳 Worktree returned to pool.
+🌳 Setting up worktree...
+🌳 Leased worktree at /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-treehouse-pool-isolation.s2E1Q7/treehouse-base/fm-home-25afe5860f16/.treehouse/repo-a414cc/1/repo. Run 'treehouse return /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-treehouse-pool-isolation.s2E1Q7/treehouse-base/fm-home-25afe5860f16/.treehouse/repo-a414cc/1/repo' to release it.
+🌳 Worktree returned to pool.
+🌳 Setting up worktree...
+🌳 Leased worktree at /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-treehouse-pool-isolation.s2E1Q7/real-treehouse/repo/fm-home-25afe5860f16/.treehouse/repo-a414cc/1/repo. Run 'treehouse return /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-treehouse-pool-isolation.s2E1Q7/real-treehouse/repo/fm-home-25afe5860f16/.treehouse/repo-a414cc/1/repo' to release it.
+🌳 Worktree returned to pool.
+🌳 Setting up worktree...
+🌳 Leased worktree at /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-treehouse-pool-isolation.s2E1Q7/real-treehouse/repo/new/pools/fm-home-25afe5860f16/.treehouse/repo-a414cc/1/repo. Run 'treehouse return /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-treehouse-pool-isolation.s2E1Q7/real-treehouse/repo/new/pools/fm-home-25afe5860f16/.treehouse/repo-a414cc/1/repo' to release it.
+🌳 Worktree returned to pool.
+🌳 Setting up worktree...
+🌳 Leased worktree at /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-treehouse-pool-isolation.s2E1Q7/real-treehouse/shared-pools/fm-home-25afe5860f16/.treehouse/repo-a414cc/1/repo. Run 'treehouse return /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-treehouse-pool-isolation.s2E1Q7/real-treehouse/shared-pools/fm-home-25afe5860f16/.treehouse/repo-a414cc/1/repo' to release it.
+🌳 Worktree returned to pool.
+🌳 Setting up worktree...
+🌳 Leased worktree at ~/.treehouse/repo-a414cc/1/repo. Run 'treehouse return ~/.treehouse/repo-a414cc/1/repo' to release it.
+🌳 Worktree returned to pool.
+🌳 Setting up worktree...
+🌳 Leased worktree at /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-treehouse-pool-isolation.s2E1Q7/real-treehouse/repo/configured/.treehouse/repo-a414cc/1/repo. Run 'treehouse return /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-treehouse-pool-isolation.s2E1Q7/real-treehouse/repo/configured/.treehouse/repo-a414cc/1/repo' to release it.
+🌳 Worktree returned to pool.
+🌳 Setting up worktree...
+🌳 Leased worktree at /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-treehouse-pool-isolation.s2E1Q7/real-treehouse/env-root/.treehouse/repo-a414cc/1/repo. Run 'treehouse return /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-treehouse-pool-isolation.s2E1Q7/real-treehouse/env-root/.treehouse/repo-a414cc/1/repo' to release it.
+🌳 Worktree returned to pool.
+ok - real Treehouse allocation, recovery, and return preserve explicit and legacy roots

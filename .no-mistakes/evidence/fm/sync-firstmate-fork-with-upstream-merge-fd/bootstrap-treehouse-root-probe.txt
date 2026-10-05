@@ -1,0 +1,9 @@
+### real treehouse v2.3.0 (advertises --lease and --root) on PATH; backend=tmux; FM_BOOTSTRAP_NETWORK=skip
+$ FM_HOME=<tmp> FM_BOOTSTRAP_NETWORK=skip bin/fm-bootstrap.sh | grep -i treehouse
+bootstrap rc=0
+(no treehouse line: --lease/--root capability probe satisfied)
+
+### older treehouse lacking --root shadowing it first on PATH
+$ PATH=<fakebin>:$PATH FM_HOME=<tmp> FM_BOOTSTRAP_NETWORK=skip bin/fm-bootstrap.sh | grep -i treehouse
+bootstrap rc=0
+MISSING: treehouse (install: curl -fsSL https://kunchenguid.github.io/treehouse/install.sh | sh)

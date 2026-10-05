@@ -1,0 +1,4 @@
+ok - tests/lib.sh pins FM_HOME to an empty, non-root directory
+ok - unsetting FM_HOME reproduces the incident against a private fixture (never against $ROOT)
+ok - a forgotten FM_HOME override lands in the pinned guard directory, not the sentinel
+ok - fixture initialization clears inherited directory overrides and protects live state

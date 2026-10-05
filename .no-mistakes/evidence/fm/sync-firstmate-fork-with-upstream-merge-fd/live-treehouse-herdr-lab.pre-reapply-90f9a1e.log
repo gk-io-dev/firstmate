@@ -1,0 +1,93 @@
+
+=== provision lab fm-lab-thpool-16966-28092 ===
+
+=== L1: spawn ta from home-a and tb from home-b (clones of one remote) ===
+spawn ta rc=0
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-a/data/ta/launch-brief.md records no ship branch; defaulting to legacy branch fm/ta
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-a/data/ta/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+spawned ta harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-thpool-16966-28092:w1:p2 worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/1/proj
+spawn tb rc=0
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-b/data/tb/launch-brief.md records no ship branch; defaulting to legacy branch fm/tb
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-b/data/tb/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+spawned tb harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-thpool-16966-28092:w1:p3 worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/2/proj
+ta: treehouse_root=
+ta: worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/1/proj
+tb: treehouse_root=
+tb: worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/2/proj
+_: fm_treehouse_home_root: command not found
+_: fm_treehouse_home_root: command not found
+FAIL: L1 per-home root isolation
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-a/data/ta/launch-brief.md records no ship branch; defaulting to legacy branch fm/ta
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-a/data/ta/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+spawned ta harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-thpool-16966-28092:w1:p2 worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/1/proj
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-b/data/tb/launch-brief.md records no ship branch; defaulting to legacy branch fm/tb
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-b/data/tb/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+spawned tb harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-thpool-16966-28092:w1:p3 worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/2/proj
+--- treehouse status home-a root
+[{"name":"1","path":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/1/proj","status":"in-use","flavor":"git","lease_id":"","lease_holder":"","leased_at":null,"processes":[{"pid":20074,"name":"zsh"},{"pid":33713,"name":"sleep"}]},{"name":"2","path":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/2/proj","status":"in-use","flavor":"git","lease_id":"","lease_holder":"","leased_at":null,"processes":[{"pid":38163,"name":"zsh"},{"pid":47819,"name":"sleep"}]}]
+--- treehouse status home-b root
+[{"name":"1","path":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/1/proj","status":"in-use","flavor":"git","lease_id":"","lease_holder":"","leased_at":null,"processes":[{"pid":20074,"name":"zsh"},{"pid":33713,"name":"sleep"}]},{"name":"2","path":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/2/proj","status":"in-use","flavor":"git","lease_id":"","lease_holder":"","leased_at":null,"processes":[{"pid":38163,"name":"zsh"},{"pid":47819,"name":"sleep"}]}]
+--- ta claim: task=ta home=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-a 
+
+=== L2: endpoint gone + slot claimed by a live foreign-home task -> relaunch must refuse with no new tab ===
+ta recorded window=fm-lab-thpool-16966-28092:w1:p2 herdr_pane_id=w1:p2
+foreign claim now: task=tb home=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-b  (record /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-b/state/tb.meta exists: yes)
+lab panes before relaunch: [{"pane_id":"w1:p3","cwd":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-b/projects/proj"}]
+before relaunch: panes=1 tabs=1
+lab panes after relaunch: [{"pane_id":"w1:p3","cwd":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-b/projects/proj"},{"pane_id":"w1:p4","cwd":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/1/proj"}]
+relaunch rc=0
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-a/data/ta/launch-brief.md records no ship branch; defaulting to legacy branch fm/ta
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-a/data/ta/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+spawned ta harness=grok kind=ship mode=no-mistakes yolo=off window=fm-lab-thpool-16966-28092:w1:p4 worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/1/proj
+after relaunch: panes=2 tabs=2
+FAIL: L2 relaunch foreign-claim refusal before rebind
+FAIL: L2 ta record mutated
+
+=== L3: control - restore own claim, same relaunch rebinds with exactly one fresh pane ===
+relaunch rc=0
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-a/data/ta/launch-brief.md records no ship branch; defaulting to legacy branch fm/ta
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-a/data/ta/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+spawned ta harness=grok kind=ship mode=no-mistakes yolo=off window=fm-lab-thpool-16966-28092:w1:p4 worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/1/proj
+panes before=2 after=2; new window=fm-lab-thpool-16966-28092:w1:p4 pane=w1:p4
+FAIL: L3 control relaunch
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-a/data/ta/launch-brief.md records no ship branch; defaulting to legacy branch fm/ta
+warning: /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/home-a/data/ta/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+spawned ta harness=grok kind=ship mode=no-mistakes yolo=off window=fm-lab-thpool-16966-28092:w1:p4 worktree=/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/1/proj
+
+=== L4: teardown returns each slot through its recorded root ===
+teardown ta rc=127
+●  repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/.pi/extensions/fm-primary-turnend-guard.ts -e /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/.pi/extensions/fm-primary-pi-watch.ts if the extensions are not loaded.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/bin/fm-teardown.sh: line 1173: fm_treehouse_task_root: command not found
+/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/bin/fm-teardown.sh: line 1174: FM_TREEHOUSE_ROOT_REASON: unbound variable
+teardown tb rc=127
+●  repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/.pi/extensions/fm-primary-turnend-guard.ts -e /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/.pi/extensions/fm-primary-pi-watch.ts if the extensions are not loaded.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/bin/fm-teardown.sh: line 1173: fm_treehouse_task_root: command not found
+/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/bin/fm-teardown.sh: line 1174: FM_TREEHOUSE_ROOT_REASON: unbound variable
+--- home-a root after teardown: [{"name":"1","path":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/1/proj","status":"in-use","flavor":"git","lease_id":"","lease_holder":"","leased_at":null,"processes":[{"pid":51214,"name":"zsh"}]},{"name":"2","path":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/2/proj","status":"in-use","flavor":"git","lease_id":"","lease_holder":"","leased_at":null,"processes":[{"pid":38163,"name":"zsh"},{"pid":47819,"name":"sleep"}]}]
+--- home-b root after teardown: [{"name":"1","path":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/1/proj","status":"in-use","flavor":"git","lease_id":"","lease_holder":"","leased_at":null,"processes":[{"pid":51214,"name":"zsh"}]},{"name":"2","path":"/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-live-th.yKNr13/treehouse-base/.treehouse/proj-84f583/2/proj","status":"in-use","flavor":"git","lease_id":"","lease_holder":"","leased_at":null,"processes":[{"pid":38163,"name":"zsh"},{"pid":47819,"name":"sleep"}]}]
+FAIL: L4 teardown through recorded root
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/.pi/extensions/fm-primary-turnend-guard.ts -e /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/.pi/extensions/fm-primary-pi-watch.ts if the extensions are not loaded.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/bin/fm-teardown.sh: line 1173: fm_treehouse_task_root: command not found
+/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/bin/fm-teardown.sh: line 1174: FM_TREEHOUSE_ROOT_REASON: unbound variable
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/.pi/extensions/fm-primary-turnend-guard.ts -e /private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/.pi/extensions/fm-primary-pi-watch.ts if the extensions are not loaded.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/bin/fm-teardown.sh: line 1173: fm_treehouse_task_root: command not found
+/private/var/folders/2k/lzzdvw9x403dgtk6x3cnchs80000gn/T/fm-old-90f9a1e.aUw7nz/bin/fm-teardown.sh: line 1174: FM_TREEHOUSE_ROOT_REASON: unbound variable
+
+=== summary: FAILS=5 ===
+
+=== cleanup ===
+lab fm-lab-thpool-16966-28092 torn down (tripwire verified)

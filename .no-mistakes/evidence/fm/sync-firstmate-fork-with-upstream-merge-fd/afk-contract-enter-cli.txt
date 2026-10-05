@@ -1,0 +1,34 @@
+$ FM_HOME=<tmp> bin/fm-afk-contract.sh enter --words "Hold merges until I return; keep shipping CI fixes."
+Away posture recorded at 2026-10-05T02:35:01Z: hold-for-return only. No phone channel is configured; anything that needs you waits for your return. Your away instructions are recorded verbatim; the away session will carry them out where it can, and anything it is unsure of, or that needs you, waits for your return. Destructive, irreversible, and security-sensitive actions are never pre-authorizable, whatever the words say. Expected return: not given. Spend cap: 4 concurrent workers.
+Away posture (recorded):
+  entered: 2026-10-05T02:35:01Z
+  expected return: not given
+  spend cap: 4 concurrent workers
+  reach: hold-for-return only. No phone channel is configured; anything that needs you waits for your return.
+  your words (verbatim):
+    Hold merges until I return; keep shipping CI fixes.
+rc=0
+
+$ cat state/.afk-contract
+version: 2
+entered: 2026-10-05T02:35:01Z
+entered_epoch: 1791167701
+expected_return: -
+reach_channels: none
+reach_announced: No phone channel is configured; anything that needs you waits for your return.
+spend_max_concurrent_workers: 4
+confirmed: 2026-10-05T02:35:01Z
+confirmed_epoch: 1791167701
+words: |-
+  Hold merges until I return; keep shipping CI fixes.
+
+entered=2026-10-05T02:35:01Z
+entered_epoch=1791167701
+date -u -r entered_epoch => 2026-10-05T02:35:01Z
+CONSISTENT: entered ISO derives from entered_epoch
+
+$ bin/fm-afk-contract.sh validate
+rc=0
+
+$ bin/fm-afk-contract.sh mode
+away
