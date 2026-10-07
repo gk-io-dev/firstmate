@@ -49,8 +49,21 @@ EOF
   fm_write_secondmate_meta "$main/state/mate.meta" "$mate"
   printf 'working: delegated scope\n' > "$main/state/mate.status"
 
+  # bin/fm-dod-lib.sh accepts a CI-ready ship done: only when the copy's named
+  # head is reachable outside the disposable worker copy, so the child needs a
+  # real clone whose HEAD also lives on a remote-tracking ref.
+  local origin child
+  origin="$root/origin.git"; child="$mate/projects/leak-child"
+  git init -q --bare "$origin"
+  git clone -q "$origin" "$child" 2>/dev/null
+  (
+    cd "$child" || exit 1
+    git -c user.email=t@example.com -c user.name=t commit -q --allow-empty -m 'child head'
+    git push -q origin HEAD:refs/heads/main
+  ) >/dev/null 2>&1
+
   fm_write_meta "$mate/state/leak-child.meta" \
-    "window=firstmate:fm-leak-child" "worktree=$mate/projects/leak-child" "project=alpha" \
+    "window=firstmate:fm-leak-child" "worktree=$child" "project=alpha" \
     'harness=codex' 'kind=ship' 'mode=no-mistakes' 'yolo=off' \
     "spawn_gen=s1" 'pr=https://github.com/example/repo/pull/1'
   printf 'done: PR https://github.com/example/repo/pull/1 checks green\n' > "$mate/state/leak-child.status"
@@ -101,7 +114,7 @@ test_bypassing_the_guard_reproduces_the_incident() {
   (
     unset FM_HOME
     PATH="$root/fakebin:$PATH" FM_ROOT_OVERRIDE="$root/mate" FM_INACTIVE_RECONCILE_SECS=60 \
-      FM_INACTIVE_CREW_STATE_BIN="$root/fakebin/fm-crew-state.sh" \
+      FM_INACTIVE_RECONCILE_BUDGET_SECS=30 FM_INACTIVE_CREW_STATE_BIN="$root/fakebin/fm-crew-state.sh" \
       "$RECON" scan >/dev/null 2>&1
   )
 
@@ -125,7 +138,7 @@ test_forgotten_home_lands_in_the_guard_not_the_sentinel() {
   build_sentinel "$root"
   before=$(fm_dir_fingerprint "$root")
 
-  PATH="$root/fakebin:$PATH" FM_ROOT_OVERRIDE="$root/mate" FM_INACTIVE_RECONCILE_SECS=60 \
+  PATH="$root/fakebin:$PATH" FM_ROOT_OVERRIDE="$root/mate" FM_INACTIVE_RECONCILE_SECS=60 FM_INACTIVE_RECONCILE_BUDGET_SECS=30 \
     FM_INACTIVE_CREW_STATE_BIN="$root/fakebin/fm-crew-state.sh" \
     "$RECON" scan >/dev/null 2>&1
 
@@ -150,7 +163,7 @@ test_inherited_directory_overrides_cannot_reach_the_sentinel() {
     FM_STATE_OVERRIDE="$root/mate/state" FM_DATA_OVERRIDE="$root/mate/data" \
     FM_CONFIG_OVERRIDE="$root/mate/config" FM_PROJECTS_OVERRIDE="$root/mate/projects" \
     FM_PENDING_REPLY_DIR_OVERRIDE="$root/mate/state/pending-replies" \
-    FM_INACTIVE_RECONCILE_SECS=60 FM_INACTIVE_CREW_STATE_BIN="$root/fakebin/fm-crew-state.sh" \
+    FM_INACTIVE_RECONCILE_SECS=60 FM_INACTIVE_RECONCILE_BUDGET_SECS=30 FM_INACTIVE_CREW_STATE_BIN="$root/fakebin/fm-crew-state.sh" \
     bash -eu -c '
       . "$1/tests/lib.sh"
       "$1/bin/fm-inactive-reconcile.sh" scan
