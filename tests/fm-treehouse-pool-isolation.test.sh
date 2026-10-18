@@ -42,7 +42,23 @@ case "$*" in
   *"#{pane_current_path}"*) printf '%s\n' "${FM_FAKE_PANE_PATH:-}"; exit 0 ;;
 esac
 case "${1:-}" in
-  list-windows) [ -z "${FM_FAKE_RELAUNCH_ID:-}" ] || printf 'fm-%s\n' "$FM_FAKE_RELAUNCH_ID"; exit 0 ;;
+  list-windows)
+    [ -z "${FM_FAKE_RELAUNCH_ID:-}" ] || printf 'fm-%s\n' "$FM_FAKE_RELAUNCH_ID"
+    [ ! -s "$(dirname "$0")/.spawn-window" ] || cat "$(dirname "$0")/.spawn-window"
+    exit 0 ;;
+  new-window)
+    name=
+    previous=
+    for arg in "$@"; do
+      [ "$previous" = -n ] && name=$arg
+      previous=$arg
+    done
+    printf '%s\n' "$name" > "$(dirname "$0")/.spawn-window"
+    exit 0 ;;
+  kill-window)
+    : > "$(dirname "$0")/.spawn-window"
+    exit 0 ;;
+  has-session|new-session|set-window-option) exit 0 ;;
   display-message) printf 'firstmate\n'; exit 0 ;;
   send-keys) printf '%s\n' "$*" >> "${FM_FAKE_TMUX_LOG:-/dev/null}"; exit 0 ;;
 esac
@@ -352,6 +368,10 @@ test_spawn_refuses_live_foreign_home_claims() {
       fi
       if [ "$mode" = fresh ]; then
         rm -f "$other_home/state/$owner_id.meta"
+        # The refused spawn left its window behind; a stale claim is only
+        # replaceable once that window is gone, so retire the stub's window
+        # record the way a real kill-window would.
+        rm -f "$fakebin/.spawn-window"
         out=$(run_spawn "$home" "$home/projects/repo" task-n "$wt" "$fakebin" "$dir/stale.log") \
           || fail "spawn refused a stale foreign-home claim: $out"
         assert_grep "home=$home" "$marker" "spawn did not replace the stale foreign-home claim"
